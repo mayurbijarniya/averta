@@ -306,11 +306,15 @@ def savings(
 def site(
     artifacts: Path = typer.Option(Path("artifacts")),
     out: Path = typer.Option(Path("site/index.html"), help="page to write"),
+    inline: bool = typer.Option(
+        False, "--inline", help="embed figures as data URIs for one portable file"
+    ),
 ) -> None:
-    """Render a self-contained results page from the committed artifacts."""
-    path = build_site(artifacts, out)
+    """Render a results page from the committed artifacts."""
+    path = build_site(artifacts, out, inline=inline)
     size = path.stat().st_size
-    typer.echo(f"wrote {path} ({size / 1024:.0f} KB, single file, no dependencies)")
+    mode = "self-contained" if inline else "figures linked from artifacts/"
+    typer.echo(f"wrote {path} ({size / 1024:.0f} KB, {mode}, no JS)")
     typer.echo(f"open it with: open {path}")
 
 

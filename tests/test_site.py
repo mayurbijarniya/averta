@@ -1,6 +1,7 @@
 """The results page must be self-contained and must not drop the caveats."""
 
 import json
+import re
 from html.parser import HTMLParser
 
 import pytest
@@ -89,6 +90,38 @@ class TestBuild:
         assert "http://" not in text
         assert "https://" not in text or "modelcontextprotocol" not in text
         assert "<script" not in text
+
+    def test_linked_figures_resolve_relative_to_the_page(self, artifacts, tmp_path):
+        figures = artifacts / "figures"
+        figures.mkdir()
+        (figures / "calibration.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+
+        out = tmp_path / "site" / "index.html"
+        text = build(artifacts, out).read_text()
+
+        sources = re.findall(r'src="([^"]+)"', text)
+        assert sources, "no figure was rendered"
+        for source in sources:
+            assert not source.startswith("data:")
+            assert (out.parent / source).resolve().exists()
+
+    def test_inline_embeds_figures_as_data_uris(self, artifacts, tmp_path):
+        figures = artifacts / "figures"
+        figures.mkdir()
+        (figures / "calibration.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+
+        text = build(artifacts, tmp_path / "index.html", inline=True).read_text()
+        assert "data:image/png;base64," in text
+        assert 'src="../' not in text
+
+    def test_inline_is_larger_than_linked(self, artifacts, tmp_path):
+        figures = artifacts / "figures"
+        figures.mkdir()
+        (figures / "calibration.png").write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 4096)
+
+        linked = build(artifacts, tmp_path / "a.html").stat().st_size
+        embedded = build(artifacts, tmp_path / "b.html", inline=True).stat().st_size
+        assert embedded > linked
 
     def test_reports_the_gate_failure(self, artifacts, tmp_path):
         text = build(artifacts, tmp_path / "index.html").read_text()

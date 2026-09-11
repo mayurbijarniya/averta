@@ -7,8 +7,9 @@ it renders three PNGs, four tables and a session list. A Node toolchain,
 capability, and a generated page cannot drift out of sync with the JSON it is
 generated from.
 
-Everything is inlined — no CDN, no external CSS, no JavaScript — so the page
-works offline, from a `file://` URL, or on any static host.
+There is no CDN, no external CSS and no JavaScript, so the page works offline
+and on any static host. Figures are linked from `artifacts/figures` by default;
+`--inline` embeds them as data URIs to produce one portable file.
 """
 
 from __future__ import annotations
@@ -16,6 +17,7 @@ from __future__ import annotations
 import base64
 import html
 import json
+import os
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -72,14 +74,25 @@ a { color: var(--accent); }
 BASELINES = {"majority", "turn_index_only", "error_repeat_only"}
 
 
-def _img(path: Path, caption: str) -> str:
-    """Inline a PNG as a data URI so the page is a single portable file."""
+def _img(path: Path, caption: str, *, out_dir: Path, inline: bool) -> str:
+    """Render a figure, either inlined or linked.
+
+    Linked is the default and what gets committed: the PNGs already live in
+    `artifacts/figures`, and base64 would duplicate them at a third again the
+    size. Inlining produces one portable file that works from a `file://` URL
+    or an email attachment, which is worth having but not worth versioning.
+    """
     if not path.exists():
         return ""
-    encoded = base64.b64encode(path.read_bytes()).decode("ascii")
+
+    if inline:
+        encoded = base64.b64encode(path.read_bytes()).decode("ascii")
+        source = f"data:image/png;base64,{encoded}"
+    else:
+        source = os.path.relpath(path.resolve(), out_dir.resolve())
+
     return (
-        f'<figure><img alt="{html.escape(caption)}" '
-        f'src="data:image/png;base64,{encoded}">'
+        f'<figure><img alt="{html.escape(caption)}" src="{html.escape(source)}">'
         f"<figcaption>{caption}</figcaption></figure>"
     )
 
@@ -178,7 +191,7 @@ def _load(path: Path) -> dict[str, Any] | None:
         return json.load(handle)
 
 
-def build(artifacts: Path, out: Path) -> Path:
+def build(artifacts: Path, out: Path, inline: bool = False) -> Path:
     gate = _load(artifacts / "phase3" / "gate_cut10.json")
     diagnostics = _load(artifacts / "phase4" / "diagnostics_cut10.json")
     savings = _load(artifacts / "phase4" / "savings_cut10.json")
@@ -237,6 +250,8 @@ def build(artifacts: Path, out: Path) -> Path:
             "AUROC against cut point. Each cut has a different population — only "
             "sessions reaching that turn appear — so this is not one model tracked "
             "over time.",
+            out_dir=out.parent,
+            inline=inline,
         ),
     ]
 
@@ -265,6 +280,8 @@ def build(artifacts: Path, out: Path) -> Path:
             _img(
                 figures / "savings_tradeoff.png",
                 "The two axes are not comparable quantities and are never summed.",
+                out_dir=out.parent,
+                inline=inline,
             ),
         ]
 
@@ -275,6 +292,8 @@ def build(artifacts: Path, out: Path) -> Path:
             "Class weighting is needed for ranking but leaves raw scores on a "
             "re-balanced scale. Isotonic calibration fitted on out-of-fold scores "
             "corrects it.",
+            out_dir=out.parent,
+            inline=inline,
         ),
     ]
 
