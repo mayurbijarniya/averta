@@ -139,6 +139,21 @@ def render_importance(items: list[Importance], top: int = 15) -> str:
     return "\n".join(lines)
 
 
+def out_of_fold_predictions(
+    data: Dataset, model_name: str, n_splits: int = 5
+) -> np.ndarray:
+    """Pooled out-of-fold failure probabilities, for downstream simulation."""
+    folds = grouped_k_fold(data.groups, data.y_resolve, n_splits)
+    factory = build_registry(FEATURE_NAMES)[model_name]
+
+    scores = np.zeros(len(data.y_fail), dtype=float)
+    for fold in folds:
+        model = factory(data.y_fail[fold.train])
+        model.fit(data.X[fold.train], data.y_fail[fold.train])
+        scores[fold.test] = model.predict_proba(data.X[fold.test])[:, 1]
+    return scores
+
+
 def render_cost(profiles: list[CostProfile]) -> str:
     header = (
         f"{'model':<24}{'fit s':>8}{'p50 ms':>9}{'p95 ms':>9}"

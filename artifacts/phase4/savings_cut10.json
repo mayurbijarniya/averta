@@ -1,0 +1,160 @@
+{
+  "cut_point": 10,
+  "model": "logistic",
+  "points": [
+    {
+      "threshold": 0.3,
+      "flagged": 4169,
+      "true_positives": 3737,
+      "false_positives": 432,
+      "recall": 0.960668380462725,
+      "false_positive_rate": 0.879837067209776,
+      "estimated_tokens_saved": 50022206,
+      "estimated_tokens_total": 75074224,
+      "successes_terminated": 432
+    },
+    {
+      "threshold": 0.35,
+      "flagged": 3779,
+      "true_positives": 3428,
+      "false_positives": 351,
+      "recall": 0.8812339331619538,
+      "false_positive_rate": 0.714867617107943,
+      "estimated_tokens_saved": 45698104,
+      "estimated_tokens_total": 75074224,
+      "successes_terminated": 351
+    },
+    {
+      "threshold": 0.4,
+      "flagged": 3242,
+      "true_positives": 2976,
+      "false_positives": 266,
+      "recall": 0.765038560411311,
+      "false_positive_rate": 0.5417515274949084,
+      "estimated_tokens_saved": 39656333,
+      "estimated_tokens_total": 75074224,
+      "successes_terminated": 266
+    },
+    {
+      "threshold": 0.45,
+      "flagged": 2769,
+      "true_positives": 2573,
+      "false_positives": 196,
+      "recall": 0.661439588688946,
+      "false_positive_rate": 0.39918533604887985,
+      "estimated_tokens_saved": 34492825,
+      "estimated_tokens_total": 75074224,
+      "successes_terminated": 196
+    },
+    {
+      "threshold": 0.5,
+      "flagged": 2411,
+      "true_positives": 2254,
+      "false_positives": 157,
+      "recall": 0.5794344473007712,
+      "false_positive_rate": 0.319755600814664,
+      "estimated_tokens_saved": 30106049,
+      "estimated_tokens_total": 75074224,
+      "successes_terminated": 157
+    },
+    {
+      "threshold": 0.55,
+      "flagged": 2069,
+      "true_positives": 1948,
+      "false_positives": 121,
+      "recall": 0.5007712082262211,
+      "false_positive_rate": 0.24643584521384929,
+      "estimated_tokens_saved": 25207866,
+      "estimated_tokens_total": 75074224,
+      "successes_terminated": 121
+    },
+    {
+      "threshold": 0.6,
+      "flagged": 1743,
+      "true_positives": 1651,
+      "false_positives": 92,
+      "recall": 0.4244215938303342,
+      "false_positive_rate": 0.18737270875763748,
+      "estimated_tokens_saved": 20527773,
+      "estimated_tokens_total": 75074224,
+      "successes_terminated": 92
+    },
+    {
+      "threshold": 0.65,
+      "flagged": 1147,
+      "true_positives": 1100,
+      "false_positives": 47,
+      "recall": 0.2827763496143959,
+      "false_positive_rate": 0.09572301425661914,
+      "estimated_tokens_saved": 11932608,
+      "estimated_tokens_total": 75074224,
+      "successes_terminated": 47
+    },
+    {
+      "threshold": 0.7,
+      "flagged": 974,
+      "true_positives": 936,
+      "false_positives": 38,
+      "recall": 0.24061696658097687,
+      "false_positive_rate": 0.07739307535641547,
+      "estimated_tokens_saved": 9835390,
+      "estimated_tokens_total": 75074224,
+      "successes_terminated": 38
+    },
+    {
+      "threshold": 0.75,
+      "flagged": 889,
+      "true_positives": 854,
+      "false_positives": 35,
+      "recall": 0.21953727506426735,
+      "false_positive_rate": 0.07128309572301425,
+      "estimated_tokens_saved": 8325220,
+      "estimated_tokens_total": 75074224,
+      "successes_terminated": 35
+    },
+    {
+      "threshold": 0.8,
+      "flagged": 728,
+      "true_positives": 705,
+      "false_positives": 23,
+      "recall": 0.18123393316195371,
+      "false_positive_rate": 0.04684317718940937,
+      "estimated_tokens_saved": 6103533,
+      "estimated_tokens_total": 75074224,
+      "successes_terminated": 23
+    },
+    {
+      "threshold": 0.85,
+      "flagged": 258,
+      "true_positives": 250,
+      "false_positives": 8,
+      "recall": 0.06426735218508997,
+      "false_positive_rate": 0.016293279022403257,
+      "estimated_tokens_saved": 2390929,
+      "estimated_tokens_total": 75074224,
+      "successes_terminated": 8
+    },
+    {
+      "threshold": 0.9,
+      "flagged": 204,
+      "true_positives": 199,
+      "false_positives": 5,
+      "recall": 0.05115681233933162,
+      "false_positive_rate": 0.010183299389002037,
+      "estimated_tokens_saved": 1822964,
+      "estimated_tokens_total": 75074224,
+      "successes_terminated": 5
+    },
+    {
+      "threshold": 0.95,
+      "flagged": 115,
+      "true_positives": 110,
+      "false_positives": 5,
+      "recall": 0.028277634961439587,
+      "false_positive_rate": 0.010183299389002037,
+      "estimated_tokens_saved": 1050798,
+      "estimated_tokens_total": 75074224,
+      "successes_terminated": 5
+    }
+  ]
+}

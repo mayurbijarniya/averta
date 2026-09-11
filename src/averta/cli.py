@@ -8,6 +8,7 @@ import typer
 from averta.adapters import discover_transcripts, read_transcript
 from averta.analyze import (
     inference_cost,
+    out_of_fold_predictions,
     permutation_importance,
     render_cost,
     render_importance,
@@ -17,6 +18,8 @@ from averta.dataset import build as build_prefix_features
 from averta.ingest import ADAPTERS
 from averta.monitor import DEFAULT_MODEL_PATH, Scorer, fit_and_save
 from averta.report import write_phase1_artifacts
+from averta.savings import load_token_estimates, simulate
+from averta.savings import render as render_savings
 from averta.schema import connect, write_sessions
 from averta.thresholds import GATE_CUT_POINT
 from averta.train import cross_validate, gate, load_pooled, render_table
@@ -212,6 +215,36 @@ def diagnose(
     with open(out / f"diagnostics_cut{cut}.json", "w") as fh:
         json.dump(payload, fh, indent=2, default=float)
     typer.echo(f"\nwrote {out / f'diagnostics_cut{cut}.json'}")
+
+
+@app.command()
+def savings(
+    db: Path = typer.Option(DEFAULT_DB),
+    cut: int = typer.Option(GATE_CUT_POINT),
+    model: str = typer.Option("logistic"),
+    out: Path = typer.Option(Path("artifacts/phase4")),
+) -> None:
+    """Simulate token savings against sessions wrongly terminated."""
+    if not db.exists():
+        raise typer.BadParameter(f"{db} does not exist")
+
+    data = load_dataset(str(db), cut)
+    predictions = out_of_fold_predictions(data, model)
+    estimates = load_token_estimates(str(db), cut)
+
+    points = simulate(data.session_ids, data.y_fail, predictions, estimates)
+    typer.echo(f"cut point {cut}, model {model}, {len(data)} sessions\n")
+    typer.echo(render_savings(points))
+
+    out.mkdir(parents=True, exist_ok=True)
+    with open(out / f"savings_cut{cut}.json", "w") as fh:
+        json.dump(
+            {"cut_point": cut, "model": model, "points": [vars(p) for p in points]},
+            fh,
+            indent=2,
+            default=float,
+        )
+    typer.echo(f"\nwrote {out / f'savings_cut{cut}.json'}")
 
 
 @app.command()
