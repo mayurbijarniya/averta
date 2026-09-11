@@ -17,6 +17,7 @@ from averta.normalize import (
     is_valid_json,
     looks_like_error,
     parse_instance_id,
+    trajectory_hash,
 )
 from averta.schema import CONTENT_HEAD_CHARS, Session, Turn
 
@@ -59,9 +60,18 @@ class SweGymAdapter:
             return None
 
         run_id = record.get("run_id")
-        session_id = f"{self.source}:{instance_id}:{run_id}"
+        messages = record.get("messages") or []
 
-        turns = list(self._turns(session_id, record.get("messages") or []))
+        # The dataset contains records sharing an instance and run id that are
+        # nevertheless different trajectories. Keying on content keeps those
+        # distinct while still collapsing genuine duplicates.
+        fingerprint = trajectory_hash(
+            f"{message.get('role')}|{_text(message.get('content'))[:200]}"
+            for message in messages
+        )
+        session_id = f"{self.source}:{instance_id}:{run_id}:{fingerprint[:8]}"
+
+        turns = list(self._turns(session_id, messages))
         if not turns:
             return None
 
@@ -77,6 +87,7 @@ class SweGymAdapter:
             outcome=bool(resolved),
             n_turns=len(turns),
             n_steps=sum(1 for turn in turns if turn.step_index is not None),
+            trajectory_hash=fingerprint,
             turns=turns,
             metadata={
                 "empty_generation": report.get("empty_generation"),

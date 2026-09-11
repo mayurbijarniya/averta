@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from collections.abc import Iterable
 
 INSTANCE_PATTERN = re.compile(r"^(?P<owner>[^_]+(?:_[^_]+)*)__(?P<repo>.+?)-(?P<suffix>[^-]+)$")
 
@@ -56,6 +57,20 @@ def digest(text: str | None) -> str | None:
         return None
     collapsed = re.sub(r"\s+", " ", text).strip()
     return hashlib.sha1(collapsed.encode("utf-8", "replace")).hexdigest()[:16]
+
+
+def trajectory_hash(parts: Iterable[str]) -> str:
+    """Content hash of a turn sequence.
+
+    Identifies a trajectory independently of the identifiers attached to it,
+    so records that merely share an instance and run id are not mistaken for
+    duplicates of each other.
+    """
+    accumulator = hashlib.sha1()
+    for part in parts:
+        accumulator.update(part.encode("utf-8", "replace"))
+        accumulator.update(b"\x1f")
+    return accumulator.hexdigest()
 
 
 def is_valid_json(text: str | None) -> bool:

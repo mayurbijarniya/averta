@@ -4,6 +4,7 @@ from averta.normalize import (
     is_valid_json,
     looks_like_error,
     parse_instance_id,
+    trajectory_hash,
 )
 
 
@@ -16,6 +17,24 @@ class TestDigest:
 
     def test_none_passes_through(self):
         assert digest(None) is None
+
+
+class TestTrajectoryHash:
+    def test_identical_sequences_match(self):
+        assert trajectory_hash(["a", "b", "c"]) == trajectory_hash(["a", "b", "c"])
+
+    def test_order_matters(self):
+        assert trajectory_hash(["a", "b"]) != trajectory_hash(["b", "a"])
+
+    def test_length_matters(self):
+        assert trajectory_hash(["a", "b"]) != trajectory_hash(["a", "b", "c"])
+
+    def test_boundaries_are_not_ambiguous(self):
+        # Without a separator these two would hash identically.
+        assert trajectory_hash(["ab", "c"]) != trajectory_hash(["a", "bc"])
+
+    def test_empty_sequence(self):
+        assert trajectory_hash([]) == trajectory_hash([])
 
 
 class TestIsValidJson:

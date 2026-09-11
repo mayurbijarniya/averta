@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS session (
     outcome      BOOLEAN NOT NULL,
     n_turns      INTEGER NOT NULL,
     n_steps      INTEGER NOT NULL,
+    trajectory_hash VARCHAR NOT NULL,
     metadata     JSON
 )
 """
@@ -79,6 +80,7 @@ class Session:
     outcome: bool
     n_turns: int
     n_steps: int
+    trajectory_hash: str
     agent: str | None = None
     run_id: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -95,6 +97,7 @@ SESSION_COLUMNS = [
     "outcome",
     "n_turns",
     "n_steps",
+    "trajectory_hash",
     "metadata",
 ]
 
@@ -140,6 +143,14 @@ def write_sessions(conn: duckdb.DuckDBPyConnection, sessions: list[Session]) -> 
         turn_rows.extend(
             tuple(asdict(turn)[column] for column in TURN_COLUMNS) for turn in session.turns
         )
+
+    # Clear any prior turns for these sessions. Without this, replacing a
+    # session with a shorter trajectory leaves the surplus turns orphaned
+    # against a stale n_turns.
+    conn.executemany(
+        "DELETE FROM turn WHERE session_id = ?",
+        [(session.session_id,) for session in sessions],
+    )
 
     conn.executemany(
         f"INSERT OR REPLACE INTO session ({', '.join(SESSION_COLUMNS)}) "
