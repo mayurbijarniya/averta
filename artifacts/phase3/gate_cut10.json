@@ -62,7 +62,7 @@
       "recall_at_fpr": 0.0,
       "threshold": Infinity,
       "brier": 0.25,
-      "fit_seconds": 0.0003477069840300828
+      "fit_seconds": 0.0004128320433665067
     },
     {
       "name": "turn_index_only",
@@ -74,7 +74,7 @@
       "recall_at_fpr": 0.0,
       "threshold": Infinity,
       "brier": 0.25,
-      "fit_seconds": 0.0200817089935299
+      "fit_seconds": 0.014542582997819409
     },
     {
       "name": "error_repeat_only",
@@ -86,7 +86,7 @@
       "recall_at_fpr": 0.07737789203084833,
       "threshold": 0.5524895031482245,
       "brier": 0.24890781770020895,
-      "fit_seconds": 0.010256375040626153
+      "fit_seconds": 0.010480374010512605
     },
     {
       "name": "logistic",
@@ -98,7 +98,7 @@
       "recall_at_fpr": 0.1910025706940874,
       "threshold": 0.7833479778884709,
       "brier": 0.22677448064572917,
-      "fit_seconds": 0.08274862496182323
+      "fit_seconds": 0.08401362501899712
     },
     {
       "name": "random_forest",
@@ -109,8 +109,8 @@
       "auprc_lift": 1.6565155922588952,
       "recall_at_fpr": 0.16066838046272494,
       "threshold": 0.9112296670237591,
-      "brier": 0.1588801668282381,
-      "fit_seconds": 3.019227915996453
+      "brier": 0.15888016682823808,
+      "fit_seconds": 3.0136271259980276
     },
     {
       "name": "hist_gradient_boosting",
@@ -122,7 +122,7 @@
       "recall_at_fpr": 0.16169665809768638,
       "threshold": 0.9638045873533176,
       "brier": 0.1806295752709586,
-      "fit_seconds": 6.509280041005695
+      "fit_seconds": 6.155223417998059
     },
     {
       "name": "xgboost",
@@ -134,7 +134,7 @@
       "recall_at_fpr": 0.15424164524421594,
       "threshold": 0.8626733422279358,
       "brier": 0.19725801986549824,
-      "fit_seconds": 2.340012291970197
+      "fit_seconds": 2.341789875004906
     }
   ],
   "gate": {
