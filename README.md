@@ -8,8 +8,9 @@ CPU-native failure prediction for AI coding agents.
 
 ## Status
 
-Phase 1 — trajectory ingestion. No model results yet. Every number in this
-README is measured before it is written.
+First attempt complete. The pre-registered decision gate **was not met** — see
+[Results](#results). Every number in this README was measured before it was
+written; none are projections.
 
 ## Background
 
@@ -81,11 +82,90 @@ published.
 
 ## Evaluation
 
-Reported metrics are AUROC, AUPRC, recall at 5% FPR, AUC by turn index,
-calibration, simulated token savings, and the rate at which successful sessions
-would have been incorrectly terminated. Accuracy is not reported — outcome
-classes are imbalanced and it flatters trivial models. Trivial baselines
-(majority class, turn index alone) are reported alongside every model.
+The positive class is **failure** — the event the tool would warn about. That
+makes the false positive rate mean "sessions that would have resolved but were
+flagged", which is the quantity worth constraining. Average precision is
+reported on the minority class (resolution, 11.2% at the gate cut) since
+average precision is informative about the rare class.
+
+Accuracy is never reported: at an 89% failure rate a model that always predicts
+failure scores 0.89 and is useless. Trivial baselines are reported alongside
+every model, and cross-validation folds group by repository so no model is
+tested on a codebase it trained on.
+
+Success criteria were **pre-registered in `src/averta/thresholds.py` and
+committed before any model existed**, so they could not be relaxed to fit a
+disappointing result.
+
+## Results
+
+At the pre-registered gate — turn 10, 4,381 sessions, 88.79% failure rate,
+five repository-grouped folds, out-of-fold predictions pooled, confidence
+intervals resampling repositories:
+
+| model | AUROC | 95% CI | AUPRC | R@5%FPR | p50 latency | size |
+|---|---|---|---|---|---|---|
+| majority | 0.500 | [0.500, 0.500] | 0.127 | 0.000 | — | — |
+| turn index only | 0.500 | [0.500, 0.500] | 0.127 | 0.000 | — | — |
+| **logistic** | **0.668** | [0.645, 0.689] | 0.198 | 0.081 | **0.18 ms** | **1.8 KB** |
+| random forest | 0.653 | [0.620, 0.672] | 0.188 | 0.148 | 26.9 ms | 11.6 MB |
+| hist gradient boosting | 0.623 | [0.589, 0.645] | 0.168 | 0.155 | 13.9 ms | 524 KB |
+| xgboost | 0.648 | [0.603, 0.673] | 0.184 | 0.151 | 0.18 ms | 494 KB |
+
+**Gate verdict: not met.** Four of five criteria passed; recall at a 5% false
+positive budget reached 0.155 at best against a required 0.25. The shortfall
+holds at every cut point tested (3, 5, 10, 20, 40 — best anywhere is 0.182) and
+under any model-selection rule.
+
+### What was established
+
+**Predictive signal exists and is not marginal.** AUROC 0.668 with a
+confidence interval of [0.645, 0.689] separates decisively from three
+baselines pinned at 0.500–0.521.
+
+**Signal emerges around turn 5 and peaks near turn 10.** At turn 3 every model
+sits at chance — a system prompt, a task statement and one action carry no
+evidence. Past turn 20 performance decays, partly through survivorship: 37% of
+resolved sessions reach turn 40 against 41% of unresolved.
+
+**A 1.8 KB linear model was the most accurate**, beating gradient boosting
+(0.668 against 0.623–0.653) at 0.18 ms single-row CPU inference. Plausible
+cause: with 23 features, 491 positives and repository-grouped evaluation, trees
+fit repository-specific thresholds that do not survive the group boundary. For
+scale, the neural monitor this work reproduces uses 0.6B parameters.
+
+**Repeated identical tool calls carry the signal, not repeated errors.**
+Permutation importance under the same grouped folds:
+
+| feature | AUROC drop |
+|---|---|
+| `n_repeated_calls` | 0.198 |
+| `n_edits` | 0.072 |
+| `chars_recent` | 0.038 |
+| `max_call_repeat` | 0.031 |
+| `max_error_repeat` | 0.008 |
+
+The prior expectation was that a recurring error signature would dominate. It
+is close to worthless in isolation (AUROC 0.521 alone, 0.008 permutation
+drop). What predicts failure is the agent reissuing a tool call it has already
+issued with byte-identical arguments.
+
+**No successful session in this corpus ends before turn 10** — 491 of 491
+resolved sessions reach it, against 71% of unresolved ones. Early termination
+is therefore perfectly associated with failure, which is why the base rate
+shifts from 8.2% to 11.2% between turn 5 and turn 10.
+
+### Limitations
+
+- Every feature is an aggregate count over the prefix. There is no sequence
+  representation, so ordering is captured only through crude repeat counts —
+  a plausible explanation for the operating-point shortfall, given the
+  strongest feature is itself a repetition proxy.
+- One corpus, one agent scaffold, 11 repositories. Grouped folds mean 11
+  grouping units, which widens every interval.
+- Token savings are not yet reported. The source records no per-message token
+  counts, so any figure would be an estimate from content length and is
+  withheld until it can be labelled as such.
 
 ## Development
 
