@@ -62,7 +62,7 @@
       "recall_at_fpr": 0.0,
       "threshold": Infinity,
       "brier": 0.25,
-      "fit_seconds": 0.00016862398479133844
+      "fit_seconds": 0.000209915975574404
     },
     {
       "name": "turn_index_only",
@@ -74,7 +74,7 @@
       "recall_at_fpr": 0.0,
       "threshold": Infinity,
       "brier": 0.25,
-      "fit_seconds": 0.013346084073418751
+      "fit_seconds": 0.013287042995216325
     },
     {
       "name": "error_repeat_only",
@@ -86,62 +86,62 @@
       "recall_at_fpr": 0.04716981132075472,
       "threshold": 0.56981851712272,
       "brier": 0.24965173504956975,
-      "fit_seconds": 0.010131540999282151
+      "fit_seconds": 0.010059416003059596
     },
     {
       "name": "logistic",
-      "auroc": 0.6193201066383869,
-      "auroc_ci_lower": 0.6020928307399351,
-      "auroc_ci_upper": 0.6424153886329922,
-      "auprc_minority": 0.1375158880991738,
-      "auprc_lift": 1.810250133502239,
-      "recall_at_fpr": 0.12353998203054807,
-      "threshold": 0.7636635724242421,
-      "brier": 0.23085792028351207,
-      "fit_seconds": 0.03344566599116661
+      "auroc": 0.6144963398288483,
+      "auroc_ci_lower": 0.5853376341177651,
+      "auroc_ci_upper": 0.6397122690931728,
+      "auprc_minority": 0.1262340871392735,
+      "auprc_lift": 1.6617372454563382,
+      "recall_at_fpr": 0.12578616352201258,
+      "threshold": 0.7968870376714131,
+      "brier": 0.22849324229865223,
+      "fit_seconds": 0.04413658400881104
     },
     {
       "name": "random_forest",
-      "auroc": 0.5934264209859632,
-      "auroc_ci_lower": 0.5721036346364903,
-      "auroc_ci_upper": 0.631800761669108,
-      "auprc_minority": 0.103023491050096,
-      "auprc_lift": 1.3561944805447064,
-      "recall_at_fpr": 0.07053009883198562,
-      "threshold": 0.9368166434312954,
-      "brier": 0.09093725222427257,
-      "fit_seconds": 2.8641002500080504
+      "auroc": 0.5916466596949121,
+      "auroc_ci_lower": 0.5679760002747535,
+      "auroc_ci_upper": 0.6282897876857788,
+      "auprc_minority": 0.10429257851085044,
+      "auprc_lift": 1.3729006646592279,
+      "recall_at_fpr": 0.11994609164420485,
+      "threshold": 0.9223735846906357,
+      "brier": 0.08975831594652656,
+      "fit_seconds": 2.8939652069529984
     },
     {
       "name": "hist_gradient_boosting",
-      "auroc": 0.5777227892909922,
-      "auroc_ci_lower": 0.5362065978645886,
-      "auroc_ci_upper": 0.6125349637084687,
-      "auprc_minority": 0.10551382034970115,
-      "auprc_lift": 1.3889770121444267,
-      "recall_at_fpr": 0.08176100628930817,
-      "threshold": 0.9961797585045705,
-      "brier": 0.10232705039818663,
-      "fit_seconds": 6.555859585001599
+      "auroc": 0.5733163458186656,
+      "auroc_ci_lower": 0.530108194179715,
+      "auroc_ci_upper": 0.6103847720664372,
+      "auprc_minority": 0.10109566382811042,
+      "auprc_lift": 1.330816689409388,
+      "recall_at_fpr": 0.1105121293800539,
+      "threshold": 0.9951557595449051,
+      "brier": 0.09899639331459496,
+      "fit_seconds": 6.297287459048675
     },
     {
       "name": "xgboost",
-      "auroc": 0.6059952179655241,
-      "auroc_ci_lower": 0.5656537615605777,
-      "auroc_ci_upper": 0.6399236696046724,
-      "auprc_minority": 0.10658870875082047,
-      "auprc_lift": 1.403126772572276,
-      "recall_at_fpr": 0.12713387241689128,
-      "threshold": 0.9055784940719604,
-      "brier": 0.159990071591691,
-      "fit_seconds": 2.277960167033598
+      "auroc": 0.6152057895021087,
+      "auroc_ci_lower": 0.5613557143056818,
+      "auroc_ci_upper": 0.6491864653374375,
+      "auprc_minority": 0.11078253987290523,
+      "auprc_lift": 1.4583340904580804,
+      "recall_at_fpr": 0.12174303683737646,
+      "threshold": 0.9208630323410034,
+      "brier": 0.15298959486115035,
+      "fit_seconds": 2.282836375030456
     }
   ],
   "gate": {
-    "model": "logistic",
+    "model": "xgboost",
     "checks": {
       "auroc >= 0.65": false,
-      "auroc ci lower >= 0.6": true,
+      "auroc ci lower >= 0.6": false,
       "auprc >= 0.18": false,
       "recall@5% fpr >= 0.25": false,
       "beats turn-index baseline": true
