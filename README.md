@@ -193,6 +193,34 @@ resolved sessions reach it, against 71% of unresolved ones. Early termination
 is therefore perfectly associated with failure, which is why the base rate
 shifts from 8.2% to 11.2% between turn 5 and turn 10.
 
+### Token savings, and the comparison to the paper
+
+Sweeping the intervention threshold at turn 10 trades savings against harm.
+The corpus records no token counts, so tokens here are **estimated** from
+content length at four characters per token. Savings count only what would
+have been spent *after* the cut, and sessions wrongly terminated are never
+netted off the savings.
+
+| threshold | recall | FPR | est. tokens saved | of total | successes killed |
+|---|---|---|---|---|---|
+| 0.55 | 0.501 | 0.246 | 25,207,866 | 33.6% | 121 |
+| 0.65 | 0.283 | 0.096 | 11,932,608 | 15.9% | 47 |
+| **0.80** | **0.181** | **0.047** | **6,103,533** | **8.1%** | **23** |
+| 0.90 | 0.051 | 0.010 | 1,822,964 | 2.4% | 5 |
+
+At a comparable false-positive budget — 4.7% against the paper's 5% target —
+this reaches **8.1% estimated token savings** where the 0.6B neural monitor
+reports 14.6–20.4%.
+
+So the honest summary of the central research question: a 2.1 KB linear model
+running in 0.18 ms on one CPU core recovers roughly **half** the token savings
+of a 0.6B neural monitor. That is the result, and it cuts both ways. The cost
+reduction is enormous and the capability gap is real.
+
+Caveats on that comparison: different corpus, different agent scaffold, and
+our tokens are estimated rather than counted. It is the closest like-for-like
+available, not a controlled replication.
+
 ### Limitations
 
 - The operating point the product needs is not reachable here. Two attempts,
@@ -286,4 +314,6 @@ and it checks that features at turn 6 are the same whether the session runs to
 
 ## License
 
-TBD — will be selected to be compatible with the upstream dataset licenses.
+MIT, covering the source in this repository. The training corpus carries no
+declared license and is not redistributed here — see [LICENSE](LICENSE) for
+the distinction.
