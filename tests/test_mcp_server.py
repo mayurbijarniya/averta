@@ -62,14 +62,46 @@ class TestGetRepeatedFailures:
         assert "measured, not predicted" in mcp_server.get_repeated_failures()["note"]
 
 
-class TestShouldIRestart:
-    def test_recommends_continue_below_threshold(self, local_session):
-        result = mcp_server.should_i_restart(threshold=0.99)
-        assert result["recommendation"] == "continue"
+def stub_risk(monkeypatch, probability: float, base_rate: float = 0.88):
+    monkeypatch.setattr(
+        mcp_server,
+        "get_session_risk",
+        lambda *a, **k: {
+            "failure_probability": probability,
+            "corpus_base_rate": base_rate,
+            "verdict": "stubbed",
+            "tokens_used": 1000,
+            "drivers": [],
+            "note": None,
+        },
+    )
 
-    def test_recommends_restart_above_threshold(self, local_session):
+
+class TestShouldIRestart:
+    def test_recommends_continue_below_threshold(self, local_session, monkeypatch):
+        stub_risk(monkeypatch, probability=0.90)
+        assert mcp_server.should_i_restart(threshold=0.99)["recommendation"] == "continue"
+
+    def test_recommends_restart_above_threshold(self, local_session, monkeypatch):
+        stub_risk(monkeypatch, probability=0.96)
+        assert (
+            mcp_server.should_i_restart(threshold=0.95)["recommendation"]
+            == "consider restarting"
+        )
+
+    def test_never_recommends_restart_at_or_below_the_base_rate(
+        self, local_session, monkeypatch
+    ):
+        # An 88% probability against an 88% base rate is no information, and a
+        # zero threshold must not turn it into a recommendation to stop.
+        stub_risk(monkeypatch, probability=0.88, base_rate=0.88)
         result = mcp_server.should_i_restart(threshold=0.0)
-        assert result["recommendation"] == "consider restarting"
+        assert result["recommendation"] == "continue"
+        assert "base rate" in result["reason"]
+
+    def test_too_short_to_assess(self, local_session, monkeypatch):
+        stub_risk(monkeypatch, probability=None)
+        assert mcp_server.should_i_restart()["recommendation"] == "continue"
 
     def test_warns_that_continue_is_weak_evidence(self, local_session):
         caveats = mcp_server.should_i_restart()["caveats"]

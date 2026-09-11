@@ -73,6 +73,11 @@ def get_session_risk(session: str | None = None, model_path: str | None = None) 
         "turns_observed": report.turns,
         "scored_at_turn": report.scored_at_turn,
         "failure_probability": report.failure_probability,
+        # Most sessions in the corpus fail, so the absolute probability means
+        # little on its own. The comparison is what carries information.
+        "corpus_base_rate": report.base_rate,
+        "lift_over_base_rate": report.lift,
+        "verdict": report.verdict,
         "tokens_used": transcript.total_tokens,
         "drivers": [
             {
@@ -144,20 +149,32 @@ def should_i_restart(
     """
     risk = get_session_risk(session)
     probability = risk["failure_probability"]
+    base_rate = risk["corpus_base_rate"]
 
+    # A probability at or below the base rate carries no information, however
+    # high it looks in absolute terms. Recommending a restart on that basis
+    # would fire on almost every session.
     if probability is None:
         recommendation = "continue"
         reason = risk["note"] or "too few turns to assess"
+    elif base_rate is not None and probability <= base_rate:
+        recommendation = "continue"
+        reason = (
+            f"failure probability {probability:.0%} is at or below the "
+            f"{base_rate:.0%} base rate — no evidence this session is unusual"
+        )
     elif probability >= threshold:
         recommendation = "consider restarting"
         reason = (
-            f"estimated failure probability {probability:.0%} at or above the "
-            f"{threshold:.0%} threshold"
+            f"failure probability {probability:.0%} at or above the "
+            f"{threshold:.0%} threshold, against a {base_rate:.0%} base rate"
+            if base_rate is not None
+            else f"failure probability {probability:.0%} at or above {threshold:.0%}"
         )
     else:
         recommendation = "continue"
         reason = (
-            f"estimated failure probability {probability:.0%} below the "
+            f"failure probability {probability:.0%} below the "
             f"{threshold:.0%} threshold"
         )
 
@@ -165,6 +182,8 @@ def should_i_restart(
         "recommendation": recommendation,
         "reason": reason,
         "failure_probability": probability,
+        "corpus_base_rate": base_rate,
+        "verdict": risk["verdict"],
         "threshold": threshold,
         "tokens_used": risk["tokens_used"],
         "drivers": risk["drivers"],

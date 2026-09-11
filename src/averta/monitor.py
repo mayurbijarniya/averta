@@ -44,6 +44,9 @@ class Contribution:
         return self.value * self.weight
 
 
+NEUTRAL_BAND = 0.03
+
+
 @dataclass(frozen=True)
 class RiskReport:
     session_id: str
@@ -52,8 +55,31 @@ class RiskReport:
     drivers: tuple[Contribution, ...]
     features: dict[str, float]
     scored_at_turn: int | None = None
+    base_rate: float | None = None
     transfer_warning: str = TRANSFER_WARNING
     note: str | None = None
+
+    @property
+    def lift(self) -> float | None:
+        """Probability relative to the base rate. 1.0 means no information."""
+        if self.failure_probability is None or not self.base_rate:
+            return None
+        return self.failure_probability / self.base_rate
+
+    @property
+    def verdict(self) -> str:
+        """Plain reading of the score against the base rate.
+
+        Most sessions in the corpus fail, so a high absolute probability is
+        not by itself a warning. What matters is whether this session looks
+        worse than the typical one.
+        """
+        if self.failure_probability is None or self.base_rate is None:
+            return "not scored"
+        delta = self.failure_probability - self.base_rate
+        if abs(delta) <= NEUTRAL_BAND:
+            return "no clear signal — indistinguishable from a typical session"
+        return "worse than typical" if delta > 0 else "better than typical"
 
     def render(self) -> str:
         lines = [f"session {self.session_id}", f"turns observed: {self.turns}"]
@@ -65,6 +91,11 @@ class RiskReport:
         if self.scored_at_turn is not None and self.scored_at_turn != self.turns:
             lines.append(f"scored on first {self.scored_at_turn} turns")
         lines.append(f"failure probability: {self.failure_probability:.1%}")
+        if self.base_rate is not None:
+            lines.append(
+                f"corpus base rate:    {self.base_rate:.1%}  "
+                f"({self.lift:.2f}x — {self.verdict})"
+            )
 
         if self.drivers:
             lines.append("\nstrongest contributors")
@@ -80,11 +111,44 @@ class RiskReport:
         return "\n".join(lines)
 
 
+class Calibrator:
+    """Maps raw model scores onto honest probabilities.
+
+    Every estimator here is fitted with class weighting, which is right for
+    ranking but leaves the output on a re-balanced scale rather than the true
+    one. Measured on the corpus, a raw score of 0.25 corresponded to an
+    observed failure rate near 0.70. Rank-based metrics are unaffected, but any
+    number shown to a user or returned over MCP has to mean what it says.
+
+    Isotonic regression is fitted on **out-of-fold** scores. Fitting it on
+    training scores would learn the model's own overconfidence and report it
+    back as calibrated.
+    """
+
+    def __init__(self) -> None:
+        from sklearn.isotonic import IsotonicRegression
+
+        self.mapping = IsotonicRegression(out_of_bounds="clip", y_min=0.0, y_max=1.0)
+        self.fitted = False
+
+    def fit(self, raw_scores: np.ndarray, y_true: np.ndarray) -> Calibrator:
+        self.mapping.fit(raw_scores, y_true)
+        self.fitted = True
+        return self
+
+    def apply(self, raw_scores: np.ndarray) -> np.ndarray:
+        if not self.fitted:
+            return raw_scores
+        return np.clip(self.mapping.predict(raw_scores), 0.0, 1.0)
+
+
 @dataclass
 class Scorer:
     model: object
     feature_names: tuple[str, ...]
     cut_points: tuple[int, ...]
+    calibrator: Calibrator | None = None
+    base_rate: float | None = None
 
     @classmethod
     def load(cls, path: Path = DEFAULT_MODEL_PATH) -> Scorer:
@@ -96,6 +160,8 @@ class Scorer:
             model=payload["model"],
             feature_names=tuple(payload["feature_names"]),
             cut_points=tuple(payload["cut_points"]),
+            calibrator=payload.get("calibrator"),
+            base_rate=payload.get("base_rate"),
         )
 
     def save(self, path: Path = DEFAULT_MODEL_PATH) -> None:
@@ -106,6 +172,8 @@ class Scorer:
                     "model": self.model,
                     "feature_names": list(self.feature_names),
                     "cut_points": list(self.cut_points),
+                    "calibrator": self.calibrator,
+                    "base_rate": self.base_rate,
                 },
                 handle,
                 protocol=pickle.HIGHEST_PROTOCOL,
@@ -151,7 +219,12 @@ class Scorer:
 
         features = extract(scored)
         vector = np.array([[features[name] for name in self.feature_names]], dtype=float)
-        probability = float(self.model.predict_proba(vector)[0, 1])
+        raw = float(self.model.predict_proba(vector)[0, 1])
+        probability = (
+            float(self.calibrator.apply(np.array([raw]))[0])
+            if self.calibrator is not None
+            else raw
+        )
 
         drivers: tuple[Contribution, ...] = ()
         weights = self._weights()
@@ -179,6 +252,7 @@ class Scorer:
             session_id=session_id,
             turns=len(turns),
             scored_at_turn=cut,
+            base_rate=self.base_rate,
             failure_probability=probability,
             drivers=drivers,
             features=features,
@@ -192,11 +266,29 @@ def fit_and_save(
     cut_points: tuple[int, ...],
     model_name: str = "logistic",
     path: Path = DEFAULT_MODEL_PATH,
+    calibration_scores: np.ndarray | None = None,
+    calibration_labels: np.ndarray | None = None,
 ) -> Scorer:
+    """Fit the final model and, when given out-of-fold scores, calibrate it.
+
+    `calibration_scores` must be out-of-fold. Passing the model's own training
+    predictions would fit the calibrator to its overconfidence.
+    """
     from averta.models import build_registry
 
     model = build_registry(FEATURE_NAMES)[model_name](y)
     model.fit(X, y)
-    scorer = Scorer(model=model, feature_names=FEATURE_NAMES, cut_points=cut_points)
+
+    calibrator = None
+    if calibration_scores is not None and calibration_labels is not None:
+        calibrator = Calibrator().fit(calibration_scores, calibration_labels)
+
+    scorer = Scorer(
+        model=model,
+        feature_names=FEATURE_NAMES,
+        cut_points=cut_points,
+        calibrator=calibrator,
+        base_rate=float(np.mean(y)),
+    )
     scorer.save(path)
     return scorer

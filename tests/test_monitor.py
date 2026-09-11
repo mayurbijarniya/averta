@@ -5,7 +5,13 @@ import pytest
 
 from averta.adapters.claude_code import discover_transcripts, read_transcript
 from averta.features import FEATURE_NAMES
-from averta.monitor import MIN_TURNS_TO_SCORE, Scorer, fit_and_save
+from averta.monitor import (
+    MIN_TURNS_TO_SCORE,
+    Calibrator,
+    RiskReport,
+    Scorer,
+    fit_and_save,
+)
 from tests.factories import session
 
 CUTS = (3, 5, 10, 20, 40)
@@ -111,6 +117,74 @@ def scorer(tmp_path):
     X = rng.random((300, len(FEATURE_NAMES)))
     y = (rng.random(300) < 0.4).astype(int)
     return fit_and_save(X, y, cut_points=CUTS, path=tmp_path / "m.pkl")
+
+
+class TestCalibrator:
+    def test_uncalibrated_passes_scores_through(self):
+        raw = np.array([0.1, 0.5, 0.9])
+        assert np.allclose(Calibrator().apply(raw), raw)
+
+    def test_corrects_systematic_underprediction(self):
+        from averta.metrics import brier_score
+
+        rng = np.random.default_rng(0)
+        truth = (rng.random(2000) < 0.9).astype(int)
+        # Class weighting produces scores centred far below the true rate.
+        raw = np.clip(truth * 0.25 + 0.2 + rng.normal(0, 0.05, 2000), 0, 1)
+
+        calibrated = Calibrator().fit(raw, truth).apply(raw)
+        assert brier_score(truth, calibrated) < brier_score(truth, raw)
+
+    def test_output_stays_in_range(self):
+        rng = np.random.default_rng(1)
+        raw = rng.random(500)
+        truth = (rng.random(500) < 0.5).astype(int)
+        out = Calibrator().fit(raw, truth).apply(np.array([-1.0, 0.5, 2.0]))
+        assert out.min() >= 0.0
+        assert out.max() <= 1.0
+
+    def test_preserves_ranking(self):
+        rng = np.random.default_rng(2)
+        raw = rng.random(300)
+        truth = (rng.random(300) < raw).astype(int)
+        calibrated = Calibrator().fit(raw, truth).apply(raw)
+        # Isotonic is monotone, so order can flatten but never invert.
+        order = np.argsort(raw)
+        assert np.all(np.diff(calibrated[order]) >= -1e-9)
+
+
+def report_with(probability: float | None, base_rate: float | None = 0.88) -> RiskReport:
+    return RiskReport(
+        session_id="s",
+        turns=20,
+        failure_probability=probability,
+        drivers=(),
+        features={},
+        base_rate=base_rate,
+    )
+
+
+class TestRiskContext:
+    def test_at_the_base_rate_reports_no_signal(self):
+        # 89% failure looks alarming until you know 88% of sessions fail.
+        assert "no clear signal" in report_with(0.89).verdict
+
+    def test_above_base_rate_reports_worse(self):
+        report = report_with(0.97)
+        assert report.verdict == "worse than typical"
+        assert report.lift > 1.0
+
+    def test_below_base_rate_reports_better(self):
+        assert report_with(0.60).verdict == "better than typical"
+
+    def test_render_includes_the_base_rate(self):
+        assert "base rate" in report_with(0.9).render()
+
+    def test_lift_is_none_without_a_base_rate(self):
+        assert report_with(0.9, base_rate=None).lift is None
+
+    def test_unscored_session_has_no_verdict(self):
+        assert report_with(None).verdict == "not scored"
 
 
 class TestScorer:

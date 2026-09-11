@@ -7,6 +7,7 @@ import typer
 
 from averta.adapters import discover_transcripts, read_transcript
 from averta.analyze import (
+    calibration,
     inference_cost,
     out_of_fold_predictions,
     permutation_importance,
@@ -16,8 +17,14 @@ from averta.analyze import (
 from averta.dataset import CUT_POINTS
 from averta.dataset import build as build_prefix_features
 from averta.ingest import ADAPTERS
-from averta.monitor import DEFAULT_MODEL_PATH, Scorer, fit_and_save
-from averta.report import write_phase1_artifacts
+from averta.metrics import brier_score
+from averta.monitor import DEFAULT_MODEL_PATH, Calibrator, Scorer, fit_and_save
+from averta.report import (
+    auroc_by_cut_plot,
+    calibration_plot,
+    savings_tradeoff_plot,
+    write_phase1_artifacts,
+)
 from averta.savings import load_token_estimates, simulate
 from averta.savings import render as render_savings
 from averta.schema import connect, write_sessions
@@ -218,6 +225,50 @@ def diagnose(
 
 
 @app.command()
+def figures(
+    db: Path = typer.Option(DEFAULT_DB),
+    model: str = typer.Option("logistic"),
+    out: Path = typer.Option(Path("artifacts/figures")),
+) -> None:
+    """Render the three result figures for the README."""
+    if not db.exists():
+        raise typer.BadParameter(f"{db} does not exist")
+
+    out.mkdir(parents=True, exist_ok=True)
+
+    curves: dict[int, dict[str, tuple[float, float, float]]] = {}
+    for cut in CUT_POINTS:
+        data = load_dataset(str(db), cut)
+        results, _ = cross_validate(data)
+        curves[cut] = {
+            r.name: (r.auroc, r.auroc_ci_lower, r.auroc_ci_upper) for r in results
+        }
+        typer.echo(f"  cut {cut}: {len(results)} models scored")
+
+    auroc_by_cut_plot(curves, out / "auroc_by_cut.png")
+    typer.echo(f"wrote {out / 'auroc_by_cut.png'}")
+
+    data = load_dataset(str(db), GATE_CUT_POINT)
+    predictions = out_of_fold_predictions(data, model)
+
+    calibrator = Calibrator().fit(predictions, data.y_fail)
+    adjusted = calibrator.apply(predictions)
+    calibration_plot(
+        raw=calibration(data, predictions),
+        calibrated=calibration(data, adjusted),
+        path=out / "calibration.png",
+        raw_brier=brier_score(data.y_fail, predictions),
+        calibrated_brier=brier_score(data.y_fail, adjusted),
+    )
+    typer.echo(f"wrote {out / 'calibration.png'}")
+
+    estimates = load_token_estimates(str(db), GATE_CUT_POINT)
+    points = simulate(data.session_ids, data.y_fail, predictions, estimates)
+    savings_tradeoff_plot(points, out / "savings_tradeoff.png")
+    typer.echo(f"wrote {out / 'savings_tradeoff.png'}")
+
+
+@app.command()
 def savings(
     db: Path = typer.Option(DEFAULT_DB),
     cut: int = typer.Option(GATE_CUT_POINT),
@@ -258,12 +309,29 @@ def fit(
         raise typer.BadParameter(f"{db} does not exist")
 
     data = load_pooled(str(db), CUT_POINTS)
+
+    # Class weighting leaves raw scores on a re-balanced scale, so the
+    # calibrator is fitted on out-of-fold predictions before the final fit.
+    oof = out_of_fold_predictions(data, model)
     scorer = fit_and_save(
-        data.X, data.y_fail, cut_points=CUT_POINTS, model_name=model, path=path
+        data.X,
+        data.y_fail,
+        cut_points=CUT_POINTS,
+        model_name=model,
+        path=path,
+        calibration_scores=oof,
+        calibration_labels=data.y_fail,
     )
+
+    raw_brier = brier_score(data.y_fail, oof)
+    calibrated_brier = brier_score(data.y_fail, scorer.calibrator.apply(oof))
 
     size = path.stat().st_size
     typer.echo(f"trained {model} on {len(data)} pooled rows across cuts {list(CUT_POINTS)}")
+    typer.echo(
+        f"Brier score {raw_brier:.4f} raw, {calibrated_brier:.4f} after isotonic "
+        f"calibration ({(1 - calibrated_brier / raw_brier):.1%} better)"
+    )
     typer.echo(f"wrote {path} ({size / 1024:.1f} KB, {len(scorer.feature_names)} features)")
     typer.echo(
         "\nNote: cross-validated performance is in artifacts/phase3. This model "
