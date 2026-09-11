@@ -1,0 +1,151 @@
+{
+  "cut_point": 20,
+  "diagnostics": {
+    "rows": 3815,
+    "failure_rate": 0.8792,
+    "resolve_rate": 0.1208,
+    "positive_class": "failure (session does not resolve)",
+    "auprc_polarity": "minority class = resolution",
+    "n_splits": 5,
+    "folds": [
+      {
+        "fold": 0,
+        "train_rows": 3109,
+        "test_rows": 706,
+        "test_positives": 149,
+        "test_positive_rate": 0.211,
+        "repos": 1
+      },
+      {
+        "fold": 1,
+        "train_rows": 3185,
+        "test_rows": 630,
+        "test_positives": 81,
+        "test_positive_rate": 0.1286,
+        "repos": 1
+      },
+      {
+        "fold": 2,
+        "train_rows": 2940,
+        "test_rows": 875,
+        "test_positives": 76,
+        "test_positive_rate": 0.0869,
+        "repos": 3
+      },
+      {
+        "fold": 3,
+        "train_rows": 2925,
+        "test_rows": 890,
+        "test_positives": 77,
+        "test_positive_rate": 0.0865,
+        "repos": 4
+      },
+      {
+        "fold": 4,
+        "train_rows": 3101,
+        "test_rows": 714,
+        "test_positives": 78,
+        "test_positive_rate": 0.1092,
+        "repos": 2
+      }
+    ],
+    "warnings": []
+  },
+  "results": [
+    {
+      "name": "majority",
+      "auroc": 0.5,
+      "auroc_ci_lower": 0.5,
+      "auroc_ci_upper": 0.5,
+      "auprc_minority": 0.13034227620109318,
+      "auprc_lift": 1.0786459516424522,
+      "recall_at_fpr": 0.0,
+      "threshold": Infinity,
+      "brier": 0.25,
+      "fit_seconds": 0.00027045898605138063
+    },
+    {
+      "name": "turn_index_only",
+      "auroc": 0.5,
+      "auroc_ci_lower": 0.5,
+      "auroc_ci_upper": 0.5,
+      "auprc_minority": 0.13034227620109318,
+      "auprc_lift": 1.0786459516424522,
+      "recall_at_fpr": 0.0,
+      "threshold": Infinity,
+      "brier": 0.25,
+      "fit_seconds": 0.012973957986105233
+    },
+    {
+      "name": "error_repeat_only",
+      "auroc": 0.5537254704131565,
+      "auroc_ci_lower": 0.5015290147272933,
+      "auroc_ci_upper": 0.5994880424546623,
+      "auprc_minority": 0.13201343452156933,
+      "auprc_lift": 1.092475602385655,
+      "recall_at_fpr": 0.035480023852116876,
+      "threshold": 0.5848002415226727,
+      "brier": 0.24887062096824056,
+      "fit_seconds": 0.010263501026201993
+    },
+    {
+      "name": "logistic",
+      "auroc": 0.6397159735453637,
+      "auroc_ci_lower": 0.6143480603323045,
+      "auroc_ci_upper": 0.6711104468582786,
+      "auprc_minority": 0.18809662828893503,
+      "auprc_lift": 1.5565914033021413,
+      "recall_at_fpr": 0.10971973762671437,
+      "threshold": 0.7313888662047728,
+      "brier": 0.23316659912694243,
+      "fit_seconds": 0.039885831967694685
+    },
+    {
+      "name": "random_forest",
+      "auroc": 0.6495310420296547,
+      "auroc_ci_lower": 0.6136062401625898,
+      "auroc_ci_upper": 0.6948012153188643,
+      "auprc_minority": 0.20040863790453112,
+      "auprc_lift": 1.658479291986521,
+      "recall_at_fpr": 0.1815742397137746,
+      "threshold": 0.850554613006975,
+      "brier": 0.13597766836728456,
+      "fit_seconds": 3.0479204170114826
+    },
+    {
+      "name": "hist_gradient_boosting",
+      "auroc": 0.6151585764787602,
+      "auroc_ci_lower": 0.5799658158360209,
+      "auroc_ci_upper": 0.6453859917530671,
+      "auprc_minority": 0.17114434071353057,
+      "auprc_lift": 1.4163029497226012,
+      "recall_at_fpr": 0.12641621943947526,
+      "threshold": 0.9584778176436105,
+      "brier": 0.16417625534156594,
+      "fit_seconds": 6.390960082993843
+    },
+    {
+      "name": "xgboost",
+      "auroc": 0.628126871530998,
+      "auroc_ci_lower": 0.5866446796519104,
+      "auroc_ci_upper": 0.6639989551389948,
+      "auprc_minority": 0.17896717532759432,
+      "auprc_lift": 1.481040724240287,
+      "recall_at_fpr": 0.14728682170542637,
+      "threshold": 0.8625043034553528,
+      "brier": 0.19202613911955932,
+      "fit_seconds": 2.3259902510326356
+    }
+  ],
+  "gate": {
+    "model": "random_forest",
+    "checks": {
+      "auroc >= 0.65": false,
+      "auroc ci lower >= 0.6": true,
+      "auprc >= 0.18": true,
+      "recall@5% fpr >= 0.25": false,
+      "beats turn-index baseline": true
+    },
+    "passed": false
+  }
+}
