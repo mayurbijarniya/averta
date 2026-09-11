@@ -11,6 +11,7 @@ import math
 from collections import Counter
 from collections.abc import Callable, Sequence
 
+from averta.features.sequence import SEQUENCE_EXTRACTORS
 from averta.features.view import TurnView
 
 Prefix = Sequence[TurnView]
@@ -162,7 +163,7 @@ def has_finished(prefix: Prefix) -> float:
     return float(any(turn.tool_name == "finish" for turn in prefix))
 
 
-EXTRACTORS: dict[str, Callable[[Prefix], float]] = {
+AGGREGATE_EXTRACTORS: dict[str, Callable[[Prefix], float]] = {
     "turns_seen": turns_seen,
     "n_steps": n_steps,
     "n_tool_calls": n_tool_calls,
@@ -188,6 +189,15 @@ EXTRACTORS: dict[str, Callable[[Prefix], float]] = {
     "has_finished": has_finished,
 }
 
+# Attempt one used the aggregate set alone. Attempt two adds sequence
+# structure; see `features/sequence.py` for why.
+EXTRACTORS: dict[str, Callable[[Prefix], float]] = {
+    **AGGREGATE_EXTRACTORS,
+    **SEQUENCE_EXTRACTORS,
+}
+
+AGGREGATE_FEATURE_NAMES = tuple(AGGREGATE_EXTRACTORS)
+SEQUENCE_FEATURE_NAMES = tuple(SEQUENCE_EXTRACTORS)
 FEATURE_NAMES = tuple(EXTRACTORS)
 
 
