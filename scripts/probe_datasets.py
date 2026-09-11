@@ -92,11 +92,15 @@ def probe(name: str, repo_id: str, n: int) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", choices=[*SOURCES, "all"], default="all")
+    parser.add_argument("--repo", help="probe an arbitrary hub dataset instead")
     parser.add_argument("--records", type=int, default=1)
     parser.add_argument("--dump", metavar="PATH", help="write the first record as JSON")
     args = parser.parse_args()
 
-    targets = SOURCES if args.source == "all" else {args.source: SOURCES[args.source]}
+    if args.repo:
+        targets = {args.repo.split("/")[-1]: args.repo}
+    else:
+        targets = SOURCES if args.source == "all" else {args.source: SOURCES[args.source]}
 
     for name, repo_id in targets.items():
         probe(name, repo_id, args.records)
