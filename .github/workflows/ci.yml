@@ -1,9 +1,12 @@
 name: ci
 
+# Manual only. Nothing runs on push or pull request — this exists to document
+# the check commands and to be available on demand, not to gate anything.
+# Run the same checks locally with:
+#   .venv/bin/python -m ruff check src tests scripts
+#   .venv/bin/python -m pytest -q
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_dispatch:
 
 jobs:
   test:
