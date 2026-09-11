@@ -205,14 +205,84 @@ shifts from 8.2% to 11.2% between turn 5 and turn 10.
   counts, so any figure would be an estimate from content length and is
   withheld until it can be labelled as such.
 
-## Development
+## Usage
 
-Requires Python 3.11+.
+Requires Python 3.11+. Nothing here calls a network API at inference time, and
+no session data leaves the machine.
 
 ```bash
 python3 -m venv .venv
 .venv/bin/python -m pip install -e ".[dev]"
 ```
+
+Reproduce the study from scratch:
+
+```bash
+averta ingest      # normalize the public corpus into DuckDB (~12 min)
+averta validate    # structural checks; must print "all checks passed"
+averta features    # build the prefix matrix at cuts 3/5/10/20/40
+averta train       # cross-validate every model and apply the gate
+averta diagnose    # permutation importance and CPU inference cost
+```
+
+Score your own sessions:
+
+```bash
+averta fit         # train on all cut points, write artifacts/model.pkl
+averta sessions    # list local Claude Code transcripts
+averta score       # score the most recent one
+```
+
+```
+session 2e9e5250-7972-4be0-a210-bd8e7ab3c7e4
+turns observed: 980
+scored on first 40 turns
+failure probability: 49.2%
+
+strongest contributors
+  distinct_action_ratio             1.000  lowers risk
+  turns_seen                       40.000  raises risk
+  n_distinct_tools                  3.000  raises risk
+
+Trained on SWE-Gym OpenHands trajectories; applied to a different agent
+scaffold. Cross-scaffold accuracy is unmeasured — treat as indicative.
+```
+
+Features are cumulative over the prefix, so a session longer than the largest
+evaluated cut is truncated to it rather than scored out of distribution. The
+report always states which turn it scored.
+
+### MCP server
+
+Exposes the same analysis to a coding agent over stdio. The agent asks about
+its own session; the agent's tokens pay for the conversation, and the
+prediction itself costs nothing.
+
+```bash
+claude mcp add averta -- /absolute/path/to/.venv/bin/averta-mcp
+```
+
+| tool | returns |
+|---|---|
+| `get_session_risk` | failure probability, contributing features, caveats |
+| `get_repeated_failures` | recurring error signatures and reissued tool calls — measured, no model |
+| `should_i_restart` | threshold applied to the risk estimate, with evidence |
+| `list_sessions` | local sessions available to inspect |
+
+Every response carries the gate result and the cross-scaffold caveat, so an
+agent relaying a number also relays its limits.
+
+## Development
+
+```bash
+.venv/bin/python -m pytest -q                    # 187 tests
+.venv/bin/python -m ruff check src tests scripts
+```
+
+The leakage suite is the one to keep green: it shuffles, truncates and extends
+the unseen tail of a session and asserts the feature vector is byte-identical,
+and it checks that features at turn 6 are the same whether the session runs to
+12 turns or 200.
 
 ## License
 
