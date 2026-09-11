@@ -31,6 +31,7 @@ from averta.report import (
 from averta.savings import load_token_estimates, simulate
 from averta.savings import render as render_savings
 from averta.schema import connect, write_sessions
+from averta.site import build as build_site
 from averta.thresholds import GATE_CUT_POINT
 from averta.train import cross_validate, gate, load_pooled, render_table
 from averta.train import load as load_dataset
@@ -293,12 +294,24 @@ def savings(
     out.mkdir(parents=True, exist_ok=True)
     with open(out / f"savings_cut{cut}.json", "w") as fh:
         json.dump(
-            {"cut_point": cut, "model": model, "points": [vars(p) for p in points]},
+            {"cut_point": cut, "model": model, "points": [p.as_dict() for p in points]},
             fh,
             indent=2,
             default=float,
         )
     typer.echo(f"\nwrote {out / f'savings_cut{cut}.json'}")
+
+
+@app.command()
+def site(
+    artifacts: Path = typer.Option(Path("artifacts")),
+    out: Path = typer.Option(Path("site/index.html"), help="page to write"),
+) -> None:
+    """Render a self-contained results page from the committed artifacts."""
+    path = build_site(artifacts, out)
+    size = path.stat().st_size
+    typer.echo(f"wrote {path} ({size / 1024:.0f} KB, single file, no dependencies)")
+    typer.echo(f"open it with: open {path}")
 
 
 @app.command()

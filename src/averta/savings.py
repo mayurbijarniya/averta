@@ -48,6 +48,14 @@ class OperatingPoint:
             return 0.0
         return self.estimated_tokens_saved / self.estimated_tokens_total
 
+    def as_dict(self) -> dict[str, float]:
+        """Serializable form, including the computed rate.
+
+        `vars()` omits properties, which silently dropped `savings_rate` from
+        the written JSON and broke the page generator downstream.
+        """
+        return {**vars(self), "savings_rate": self.savings_rate}
+
 
 def load_token_estimates(db: str, cut_point: int) -> dict[str, tuple[float, float]]:
     """Maps session id to (estimated tokens after the cut, estimated total)."""

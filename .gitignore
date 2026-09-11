@@ -28,3 +28,5 @@ web/.vercel/
 
 .DS_Store
 Thumbs.db
+
+site/
