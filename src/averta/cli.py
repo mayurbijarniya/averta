@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import typer
@@ -8,6 +9,9 @@ from averta.dataset import build as build_prefix_features
 from averta.ingest import ADAPTERS
 from averta.report import write_phase1_artifacts
 from averta.schema import connect, write_sessions
+from averta.thresholds import GATE_CUT_POINT
+from averta.train import cross_validate, gate, render_table
+from averta.train import load as load_dataset
 
 app = typer.Typer(add_completion=False, help="Averta — failure prediction for coding agents.")
 
@@ -108,6 +112,60 @@ def report(
             f"mean turns={row['mean_turns']}, mean steps={row['mean_steps']}"
         )
     typer.echo(f"\nwrote {out}/corpus_summary.json and {out}/turn_distribution.png")
+
+
+@app.command()
+def train(
+    db: Path = typer.Option(DEFAULT_DB),
+    cut: int = typer.Option(GATE_CUT_POINT, help="absolute turn index to score at"),
+    folds: int = typer.Option(5, help="number of repo-grouped folds"),
+    out: Path = typer.Option(Path("artifacts/phase3"), help="directory for results"),
+) -> None:
+    """Cross-validate every model at one cut point and apply the gate."""
+    if not db.exists():
+        raise typer.BadParameter(f"{db} does not exist")
+
+    data = load_dataset(str(db), cut)
+    typer.echo(f"cut point {cut}: {len(data)} rows, failure rate {data.failure_rate:.2%}\n")
+
+    results, diagnostics = cross_validate(data, folds)
+
+    for warning in diagnostics["warnings"]:
+        typer.echo(f"WARNING  {warning}")
+    if diagnostics["warnings"]:
+        typer.echo("")
+
+    typer.echo(render_table(results, data.resolve_rate))
+
+    best, verdict = gate(results)
+    typer.echo(f"\nbest non-baseline model: {best.name}")
+    typer.echo("")
+    typer.echo(verdict.render())
+
+    out.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "cut_point": cut,
+        "diagnostics": diagnostics,
+        "results": [
+            {
+                key: value
+                for key, value in vars(result).items()
+                if key != "predictions"
+            }
+            for result in results
+        ],
+        "gate": {
+            "model": best.name,
+            "checks": verdict.checks,
+            "passed": verdict.passed,
+        },
+    }
+    with open(out / f"gate_cut{cut}.json", "w") as fh:
+        json.dump(payload, fh, indent=2, default=float)
+    typer.echo(f"\nwrote {out / f'gate_cut{cut}.json'}")
+
+    if not verdict.passed:
+        raise typer.Exit(code=1)
 
 
 CHECKS = {
