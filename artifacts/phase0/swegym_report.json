@@ -1,0 +1,61 @@
+{
+  "repo_id": "SWE-Gym/OpenHands-Sampled-Trajectories",
+  "config": "default",
+  "split": "train.raw",
+  "license": null,
+  "last_modified": "2024-12-23 03:54:21+00:00",
+  "declared_rows": 6055,
+  "scanned_rows": 6055,
+  "truncated": false,
+  "record_keys": [
+    "instance_id",
+    "messages",
+    "resolved",
+    "run_id",
+    "test_result",
+    "tools"
+  ],
+  "token_fields": [],
+  "label": {
+    "field": "resolved",
+    "non_null": 6055,
+    "coverage": 1.0,
+    "resolve_rate": 0.0811
+  },
+  "grouping": {
+    "distinct_repos": 11,
+    "unparsed_instance_ids": 0,
+    "distinct_instances": 2438,
+    "distinct_runs": 9,
+    "duplicate_instance_run_pairs": 197
+  },
+  "turns": {
+    "min": 7,
+    "p25": 9,
+    "median": 31,
+    "p75": 61,
+    "max": 101,
+    "mean": 39.28
+  },
+  "tool_vocab_size": 6,
+  "tool_vocab": {
+    "str_replace_editor": 79200,
+    "execute_bash": 24918,
+    "finish": 2756,
+    "view": 4,
+    "undo_edit": 3,
+    "create_script": 1
+  },
+  "turns_by_outcome": [
+    {
+      "resolved": false,
+      "n": 5564,
+      "mean_turns": 39.23
+    },
+    {
+      "resolved": true,
+      "n": 491,
+      "mean_turns": 39.86
+    }
+  ]
+}
