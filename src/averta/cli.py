@@ -5,6 +5,7 @@ from pathlib import Path
 import typer
 
 from averta.ingest import ADAPTERS
+from averta.report import write_phase1_artifacts
 from averta.schema import connect, write_sessions
 
 app = typer.Typer(add_completion=False, help="Averta — failure prediction for coding agents.")
@@ -57,6 +58,85 @@ def ingest(
     typer.echo(f"\nread {read} records, skipped {skipped}")
     typer.echo(f"wrote {sessions} sessions and {turns} turns")
     typer.echo(f"{stored} distinct sessions stored for {source} ({sessions - stored} collapsed)")
+
+
+@app.command()
+def report(
+    db: Path = typer.Option(DEFAULT_DB),
+    out: Path = typer.Option(Path("artifacts/phase1"), help="directory for artifacts"),
+) -> None:
+    """Write corpus summary statistics and the turn distribution plot."""
+    if not db.exists():
+        raise typer.BadParameter(f"{db} does not exist")
+
+    summary = write_phase1_artifacts(str(db), out)
+
+    typer.echo(f"sessions            {summary['sessions']}")
+    typer.echo(f"resolved            {summary['resolved']} ({summary['resolve_rate']:.2%})")
+    typer.echo(f"repos               {summary['distinct_repos']}")
+    typer.echo(f"instances           {summary['distinct_instances']}")
+    typer.echo(f"turn rows           {summary['turn_rows']}")
+    typer.echo(f"error turns         {summary['error_turns']}")
+    typer.echo(f"error signatures    {summary['distinct_error_signatures']}")
+    typer.echo(f"malformed tool args {summary['malformed_tool_inputs']}")
+    for row in summary["by_outcome"]:
+        typer.echo(
+            f"  resolved={row['resolved']}: n={row['sessions']}, "
+            f"mean turns={row['mean_turns']}, mean steps={row['mean_steps']}"
+        )
+    typer.echo(f"\nwrote {out}/corpus_summary.json and {out}/turn_distribution.png")
+
+
+CHECKS = {
+    "sessions with zero turns": """
+        SELECT s.session_id FROM session s
+        LEFT JOIN turn t USING (session_id)
+        GROUP BY s.session_id HAVING count(t.turn_index) = 0
+    """,
+    "turn count disagrees with session.n_turns": """
+        SELECT s.session_id FROM session s
+        JOIN turn t USING (session_id)
+        GROUP BY s.session_id, s.n_turns HAVING count(*) <> s.n_turns
+    """,
+    "non-contiguous turn indices": """
+        SELECT session_id FROM turn
+        GROUP BY session_id
+        HAVING max(turn_index) - min(turn_index) + 1 <> count(*) OR min(turn_index) <> 0
+    """,
+    "orphan turns": """
+        SELECT DISTINCT t.session_id FROM turn t
+        LEFT JOIN session s USING (session_id) WHERE s.session_id IS NULL
+    """,
+    "missing repo": "SELECT session_id FROM session WHERE repo IS NULL OR repo = ''",
+    "missing instance id": "SELECT session_id FROM session WHERE instance_id IS NULL",
+}
+
+
+@app.command()
+def validate(db: Path = typer.Option(DEFAULT_DB)) -> None:
+    """Fail loudly on any structural problem in the store."""
+    if not db.exists():
+        raise typer.BadParameter(f"{db} does not exist")
+
+    conn = connect(str(db))
+    failures = 0
+
+    for label, query in CHECKS.items():
+        offenders = conn.execute(query).fetchall()
+        if offenders:
+            failures += len(offenders)
+            typer.echo(f"FAIL  {label}: {len(offenders)}")
+            for (session_id,) in offenders[:3]:
+                typer.echo(f"        {session_id}")
+        else:
+            typer.echo(f"ok    {label}")
+
+    conn.close()
+
+    if failures:
+        typer.echo(f"\n{failures} problems found")
+        raise typer.Exit(code=1)
+    typer.echo("\nall checks passed")
 
 
 @app.command()
