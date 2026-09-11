@@ -4,6 +4,7 @@ from pathlib import Path
 
 import typer
 
+from averta.dataset import build as build_prefix_features
 from averta.ingest import ADAPTERS
 from averta.report import write_phase1_artifacts
 from averta.schema import connect, write_sessions
@@ -58,6 +59,28 @@ def ingest(
     typer.echo(f"\nread {read} records, skipped {skipped}")
     typer.echo(f"wrote {sessions} sessions and {turns} turns")
     typer.echo(f"{stored} distinct sessions stored for {source} ({sessions - stored} collapsed)")
+
+
+@app.command()
+def features(
+    db: Path = typer.Option(DEFAULT_DB),
+) -> None:
+    """Build the prefix feature matrix from ingested sessions."""
+    if not db.exists():
+        raise typer.BadParameter(f"{db} does not exist")
+
+    conn = connect(str(db))
+    try:
+        summary = build_prefix_features(conn)
+    finally:
+        conn.close()
+
+    typer.echo(f"sessions processed  {summary['sessions']}")
+    typer.echo(f"features per row    {summary['features']}")
+    typer.echo("\ncut  rows    resolved  resolve%")
+    for cut, stats in summary["cut_points"].items():
+        rate = f"{stats['resolve_rate']:.2%}" if stats["resolve_rate"] is not None else "n/a"
+        typer.echo(f"{cut:>3}  {stats['rows']:>6}  {stats['resolved']:>8}  {rate:>8}")
 
 
 @app.command()
