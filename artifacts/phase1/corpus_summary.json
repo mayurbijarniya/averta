@@ -1,0 +1,99 @@
+{
+  "sessions": 5976,
+  "resolved": 491,
+  "resolve_rate": 0.0822,
+  "distinct_repos": 11,
+  "distinct_instances": 2438,
+  "distinct_runs": 9,
+  "turns": {
+    "min": 7,
+    "p25": 9.0,
+    "median": 31.0,
+    "p75": 61.0,
+    "max": 101,
+    "mean": 39.68
+  },
+  "by_outcome": [
+    {
+      "resolved": false,
+      "sessions": 5485,
+      "mean_turns": 39.66,
+      "mean_steps": 19.09
+    },
+    {
+      "resolved": true,
+      "sessions": 491,
+      "mean_turns": 39.86,
+      "mean_steps": 19.25
+    }
+  ],
+  "turn_rows": 237132,
+  "error_turns": 24028,
+  "distinct_error_signatures": 4684,
+  "malformed_tool_inputs": 7,
+  "tool_vocab": {
+    "str_replace_editor": 76256,
+    "execute_bash": 24612,
+    "finish": 2755,
+    "view": 2,
+    "undo_edit": 2,
+    "create_script": 1
+  },
+  "per_repo": [
+    {
+      "repo": "getmoto/moto",
+      "sessions": 1128,
+      "resolved": 155
+    },
+    {
+      "repo": "pandas-dev/pandas",
+      "sessions": 1043,
+      "resolved": 70
+    },
+    {
+      "repo": "Project-MONAI/MONAI",
+      "sessions": 952,
+      "resolved": 95
+    },
+    {
+      "repo": "python/mypy",
+      "sessions": 818,
+      "resolved": 46
+    },
+    {
+      "repo": "iterative/dvc",
+      "sessions": 721,
+      "resolved": 36
+    },
+    {
+      "repo": "dask/dask",
+      "sessions": 305,
+      "resolved": 45
+    },
+    {
+      "repo": "modin-project/modin",
+      "sessions": 248,
+      "resolved": 3
+    },
+    {
+      "repo": "conan-io/conan",
+      "sessions": 245,
+      "resolved": 20
+    },
+    {
+      "repo": "pydantic/pydantic",
+      "sessions": 243,
+      "resolved": 11
+    },
+    {
+      "repo": "facebookresearch/hydra",
+      "sessions": 213,
+      "resolved": 7
+    },
+    {
+      "repo": "bokeh/bokeh",
+      "sessions": 60,
+      "resolved": 3
+    }
+  ]
+}
