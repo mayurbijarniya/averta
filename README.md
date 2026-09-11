@@ -221,6 +221,41 @@ Caveats on that comparison: different corpus, different agent scaffold, and
 our tokens are estimated rather than counted. It is the closest like-for-like
 available, not a controlled replication.
 
+### Cross-scaffold transfer is unmeasured
+
+The plan was to train on OpenHands trajectories and test on hand-labelled
+Claude Code sessions, reporting the AUROC gap. That is not reported, because
+only three local transcripts are long enough and none carry outcome labels.
+A transfer AUROC on n=3 would be noise presented as a result.
+
+What is measurable without labels is whether the features compute comparably
+at all — a prerequisite for transfer rather than a substitute for measuring it.
+At cut point 40, corpus (n=2,409) against local (n=3):
+
+| feature | corpus | local | std diff |
+|---|---|---|---|
+| `n_steps` | 18.72 | 23.33 | +5.29 (outside training range) |
+| `n_tool_calls` | 18.84 | 10.00 | −4.40 |
+| `turns_since_error` | 9.30 | 40.00 | +2.74 |
+| `error_rate` | 0.23 | 0.00 | −1.77 |
+
+Every comparable feature shifts by more than 1.3 standard deviations, and two
+fall outside the range the model was fitted on. Claude Code emits more
+assistant turns per tool call than OpenHands, because thinking blocks become
+their own turns — so a "turn" is not the same unit across scaffolds.
+
+Consequently the live monitor labels its output **indicative**, in every code
+path including over MCP.
+
+This check also caught a real bug. `n_edits` and `n_files_touched` initially
+reported exactly 0.00 on sessions full of edits: `edited_path` was keyed to
+the OpenHands `str_replace_editor` argument schema, while Claude Code uses
+separate `Edit`/`Write`/`MultiEdit` tools with `file_path`. The feature failed
+silently to zero and the model extrapolated on it. Both vocabularies are now
+recognised. That is the concrete form of the cross-schema problem — not a
+slightly worse score, but a confident zero for something that happened
+dozens of times.
+
 ### Limitations
 
 - The operating point the product needs is not reachable here. Two attempts,
@@ -251,21 +286,30 @@ averta validate    # structural checks; must print "all checks passed"
 averta features    # build the prefix matrix at cuts 3/5/10/20/40
 averta train       # cross-validate every model and apply the gate
 averta diagnose    # permutation importance and CPU inference cost
+averta savings     # token savings against sessions wrongly terminated
+averta figures     # render the three result figures
+averta site        # build a static results page from the artifacts
 ```
+
+`averta train` exits non-zero when the gate is not met, which is its normal
+state here. Changing anything under `features/` invalidates the stored matrix,
+the model and the gate results — re-run `features → train → fit`.
 
 Score your own sessions:
 
 ```bash
-averta fit         # train on all cut points, write artifacts/model.pkl
+averta fit         # train on pooled cut points, calibrate, persist the model
 averta sessions    # list local Claude Code transcripts
 averta score       # score the most recent one
+averta drift       # compare its features against the training corpus
 ```
 
 ```
 session 2e9e5250-7972-4be0-a210-bd8e7ab3c7e4
-turns observed: 980
+turns observed: 1099
 scored on first 40 turns
-failure probability: 49.2%
+failure probability: 89.7%
+corpus base rate:    90.6%  (0.99x — no clear signal — indistinguishable from a typical session)
 
 strongest contributors
   distinct_action_ratio             1.000  lowers risk
@@ -276,9 +320,20 @@ Trained on SWE-Gym OpenHands trajectories; applied to a different agent
 scaffold. Cross-scaffold accuracy is unmeasured — treat as indicative.
 ```
 
-Features are cumulative over the prefix, so a session longer than the largest
-evaluated cut is truncated to it rather than scored out of distribution. The
-report always states which turn it scored.
+Two details in that output matter more than the percentage.
+
+**The base rate is shown next to the probability.** Most sessions in the corpus
+fail, so 89.7% sounds alarming until you see that 90.6% is typical. Reporting
+the probability alone hid the fact that the model had no real signal. Scores are
+isotonically calibrated on out-of-fold predictions, because class weighting is
+needed for ranking but leaves raw scores on a re-balanced scale — that fix moved
+the Brier score from 0.2323 to 0.0826.
+
+**Long sessions are truncated, not extrapolated.** Features are cumulative over
+the prefix, so a 900-turn session scored against a model fitted on prefixes of
+at most 40 turns puts every count far outside the fitted range; that produced a
+meaningless 100.0% before the fix. The report always states which turn it
+actually scored.
 
 ### MCP server
 
