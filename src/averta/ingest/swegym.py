@@ -11,7 +11,13 @@ import json
 from collections.abc import Iterator
 from typing import Any
 
-from averta.normalize import error_signature, looks_like_error, parse_instance_id
+from averta.normalize import (
+    digest,
+    error_signature,
+    is_valid_json,
+    looks_like_error,
+    parse_instance_id,
+)
 from averta.schema import CONTENT_HEAD_CHARS, Session, Turn
 
 OBSERVATION_ROLES = {"tool", "function"}
@@ -89,11 +95,15 @@ class SweGymAdapter:
 
             tool_name = None
             tool_input = None
+            tool_input_hash = None
+            tool_input_bad = False
             if tool_calls:
                 function = tool_calls[0].get("function") or {}
                 tool_name = function.get("name")
                 arguments = function.get("arguments")
                 tool_input = arguments if isinstance(arguments, str) else json.dumps(arguments)
+                tool_input_hash = digest(tool_input)
+                tool_input_bad = not is_valid_json(tool_input)
 
             step_index = None
             if role == "assistant":
@@ -109,6 +119,8 @@ class SweGymAdapter:
                 role=role,
                 tool_name=tool_name,
                 tool_input=tool_input,
+                tool_input_hash=tool_input_hash,
+                tool_input_bad=tool_input_bad,
                 n_tool_calls=len(tool_calls),
                 content_chars=len(content),
                 content_head=content[:CONTENT_HEAD_CHARS] or None,

@@ -88,7 +88,8 @@ def stats(db: Path = typer.Option(DEFAULT_DB)) -> None:
         )
 
     turns_by_outcome = conn.execute(
-        "SELECT outcome, count(*), round(avg(n_turns), 2) FROM session GROUP BY outcome ORDER BY outcome"
+        "SELECT outcome, count(*), round(avg(n_turns), 2) FROM session "
+        "GROUP BY outcome ORDER BY outcome"
     ).fetchall()
     typer.echo("\nturns by outcome")
     for outcome, count, mean in turns_by_outcome:

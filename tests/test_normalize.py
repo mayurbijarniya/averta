@@ -1,4 +1,32 @@
-from averta.normalize import error_signature, looks_like_error, parse_instance_id
+from averta.normalize import (
+    digest,
+    error_signature,
+    is_valid_json,
+    looks_like_error,
+    parse_instance_id,
+)
+
+
+class TestDigest:
+    def test_ignores_whitespace_differences(self):
+        assert digest('{"cmd": "ls"}') == digest('{"cmd":   "ls"}\n')
+
+    def test_distinguishes_different_inputs(self):
+        assert digest('{"cmd": "ls"}') != digest('{"cmd": "pwd"}')
+
+    def test_none_passes_through(self):
+        assert digest(None) is None
+
+
+class TestIsValidJson:
+    def test_valid(self):
+        assert is_valid_json('{"command": "str_replace", "path": "/a/b.py"}')
+
+    def test_truncated_generation(self):
+        assert not is_valid_json('{"command":"str_replace","path":"/workspace/get')
+
+    def test_empty(self):
+        assert not is_valid_json("")
 
 
 class TestParseInstanceId:

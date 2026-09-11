@@ -33,7 +33,9 @@ CREATE TABLE IF NOT EXISTS turn (
     step_index      INTEGER,
     role            VARCHAR NOT NULL,
     tool_name       VARCHAR,
-    tool_input      JSON,
+    tool_input      VARCHAR,
+    tool_input_hash VARCHAR,
+    tool_input_bad  BOOLEAN NOT NULL DEFAULT FALSE,
     n_tool_calls    INTEGER NOT NULL DEFAULT 0,
     content_chars   INTEGER NOT NULL DEFAULT 0,
     content_head    VARCHAR,
@@ -59,6 +61,8 @@ class Turn:
     step_index: int | None = None
     tool_name: str | None = None
     tool_input: str | None = None
+    tool_input_hash: str | None = None
+    tool_input_bad: bool = False
     n_tool_calls: int = 0
     content_chars: int = 0
     content_head: str | None = None
@@ -101,6 +105,8 @@ TURN_COLUMNS = [
     "role",
     "tool_name",
     "tool_input",
+    "tool_input_hash",
+    "tool_input_bad",
     "n_tool_calls",
     "content_chars",
     "content_head",

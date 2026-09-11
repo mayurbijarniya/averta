@@ -7,6 +7,8 @@ a traceback that differs only in a temp directory name is the same error.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 
 INSTANCE_PATTERN = re.compile(r"^(?P<owner>[^_]+(?:_[^_]+)*)__(?P<repo>.+?)-(?P<suffix>[^-]+)$")
@@ -32,9 +34,13 @@ ERROR_MARKERS = (
 
 EXIT_CODE = re.compile(r"exit code[:=]?\s*(\d+)", re.IGNORECASE)
 
+UUID_PATTERN = re.compile(
+    r"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b"
+)
+
 SCRUB = [
     (re.compile(r"0x[0-9a-fA-F]+"), "<addr>"),
-    (re.compile(r"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b"), "<uuid>"),
+    (UUID_PATTERN, "<uuid>"),
     (re.compile(r"(/[\w.\-]+){2,}"), "<path>"),
     (re.compile(r"line \d+"), "line <n>"),
     (re.compile(r"\d+"), "<n>"),
@@ -42,6 +48,24 @@ SCRUB = [
 ]
 
 MAX_SIGNATURE_CHARS = 180
+
+
+def digest(text: str | None) -> str | None:
+    """Stable short hash of a tool input, for detecting reissued calls."""
+    if text is None:
+        return None
+    collapsed = re.sub(r"\s+", " ", text).strip()
+    return hashlib.sha1(collapsed.encode("utf-8", "replace")).hexdigest()[:16]
+
+
+def is_valid_json(text: str | None) -> bool:
+    if not text:
+        return False
+    try:
+        json.loads(text)
+    except (ValueError, TypeError):
+        return False
+    return True
 
 
 def parse_instance_id(instance_id: str) -> tuple[str | None, str | None]:

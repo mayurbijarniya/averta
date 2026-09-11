@@ -190,7 +190,8 @@ def render(report: dict[str, Any]) -> None:
     print(f"  split            : {report['config']}/{report['split']}")
     print(f"  license          : {report['license'] or 'NOT DECLARED'}")
     print(f"  declared rows    : {report['declared_rows']}")
-    print(f"  scanned rows     : {report['scanned_rows']}{' (truncated)' if report['truncated'] else ''}")
+    suffix = " (truncated)" if report["truncated"] else ""
+    print(f"  scanned rows     : {report['scanned_rows']}{suffix}")
     print(f"  fields           : {', '.join(report['record_keys'])}")
 
     label = report["label"]
