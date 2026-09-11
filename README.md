@@ -8,8 +8,8 @@ CPU-native failure prediction for AI coding agents.
 
 ## Status
 
-Phase 0 — data verification. No results yet. Every number in this README will
-be measured before it is written.
+Phase 1 — trajectory ingestion. No model results yet. Every number in this
+README is measured before it is written.
 
 ## Background
 
@@ -41,6 +41,43 @@ Three constraints shape the design:
   uses turns 5, 10, and 20.
 - **Grouped splits.** Train/test splits group by repository, never by
   trajectory.
+
+## Data
+
+Training data comes from
+[SWE-Gym/OpenHands-Sampled-Trajectories](https://huggingface.co/datasets/SWE-Gym/OpenHands-Sampled-Trajectories),
+which records OpenHands agent attempts at SWE-bench-style issues along with
+whether each attempt resolved the issue.
+
+A survey of six public trajectory corpora found this to be the only one
+carrying both outcome classes. The others — `nebius/SWE-rebench-openhands`,
+`nvidia/SWE-Zero`, `nvidia/SWE-Hero`, `SWE-Gym/OpenHands-SFT` — are
+supervised fine-tuning corpora that store the agent's patch but no resolution
+label.
+
+Measured over all 6,055 trajectories:
+
+| | |
+|---|---|
+| Label coverage | 100% |
+| Resolve rate | 8.1% (491 / 6,055) |
+| Distinct repositories | 11 |
+| Distinct task instances | 2,438 |
+| Turns per session | median 31, p75 61, max 101 |
+| Per-step token counts | not recorded |
+
+Two properties of this data shape the evaluation. The positive class is rare
+at 8.1%, so metrics that tolerate imbalance are required. And **session length
+barely separates the classes** — resolved sessions average 39.86 turns against
+39.23 for unresolved. Prior work has described unsuccessful agent runs as
+tending to be longer; that does not reproduce here, which makes turn count a
+near-useless predictor on its own and raises the bar for what the remaining
+features must contribute.
+
+Because the source carries no declared license, this repository does not
+redistribute it. Raw trajectories are downloaded locally and excluded from
+version control; only derived statistics, figures, and model artifacts are
+published.
 
 ## Evaluation
 
