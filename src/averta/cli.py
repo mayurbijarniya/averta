@@ -5,18 +5,21 @@ from pathlib import Path
 
 import typer
 
+from averta.adapters import discover_transcripts, read_transcript
 from averta.analyze import (
     inference_cost,
     permutation_importance,
     render_cost,
     render_importance,
 )
+from averta.dataset import CUT_POINTS
 from averta.dataset import build as build_prefix_features
 from averta.ingest import ADAPTERS
+from averta.monitor import DEFAULT_MODEL_PATH, Scorer, fit_and_save
 from averta.report import write_phase1_artifacts
 from averta.schema import connect, write_sessions
 from averta.thresholds import GATE_CUT_POINT
-from averta.train import cross_validate, gate, render_table
+from averta.train import cross_validate, gate, load_pooled, render_table
 from averta.train import load as load_dataset
 
 app = typer.Typer(add_completion=False, help="Averta — failure prediction for coding agents.")
@@ -209,6 +212,77 @@ def diagnose(
     with open(out / f"diagnostics_cut{cut}.json", "w") as fh:
         json.dump(payload, fh, indent=2, default=float)
     typer.echo(f"\nwrote {out / f'diagnostics_cut{cut}.json'}")
+
+
+@app.command()
+def fit(
+    db: Path = typer.Option(DEFAULT_DB),
+    model: str = typer.Option("logistic"),
+    path: Path = typer.Option(DEFAULT_MODEL_PATH, help="where to write the model"),
+) -> None:
+    """Train on the full corpus at one cut point and persist the model."""
+    if not db.exists():
+        raise typer.BadParameter(f"{db} does not exist")
+
+    data = load_pooled(str(db), CUT_POINTS)
+    scorer = fit_and_save(
+        data.X, data.y_fail, cut_points=CUT_POINTS, model_name=model, path=path
+    )
+
+    size = path.stat().st_size
+    typer.echo(f"trained {model} on {len(data)} pooled rows across cuts {list(CUT_POINTS)}")
+    typer.echo(f"wrote {path} ({size / 1024:.1f} KB, {len(scorer.feature_names)} features)")
+    typer.echo(
+        "\nNote: cross-validated performance is in artifacts/phase3. This model "
+        "is fit on all rows and has no held-out estimate of its own."
+    )
+
+
+@app.command()
+def sessions(limit: int = typer.Option(10, help="how many recent transcripts to list")) -> None:
+    """List local Claude Code transcripts available for scoring."""
+    paths = discover_transcripts()
+    if not paths:
+        typer.echo("no transcripts found under ~/.claude/projects")
+        return
+
+    typer.echo(f"{'session':<40}{'turns':>7}{'tokens':>10}  project")
+    for path in paths[:limit]:
+        transcript = read_transcript(path)
+        typer.echo(
+            f"{transcript.session_id:<40}{len(transcript):>7}"
+            f"{transcript.total_tokens:>10}  {transcript.repo}"
+        )
+
+
+@app.command()
+def score(
+    session: str = typer.Argument(None, help="session id; defaults to most recent"),
+    model_path: Path = typer.Option(DEFAULT_MODEL_PATH),
+    top: int = typer.Option(5, help="how many contributing features to show"),
+) -> None:
+    """Score a local Claude Code session for failure risk."""
+    paths = discover_transcripts()
+    if not paths:
+        raise typer.BadParameter("no transcripts found under ~/.claude/projects")
+
+    if session:
+        matches = [p for p in paths if p.stem.startswith(session)]
+        if not matches:
+            raise typer.BadParameter(f"no transcript matching {session!r}")
+        chosen = matches[0]
+    else:
+        chosen = paths[0]
+
+    transcript = read_transcript(chosen)
+    scorer = Scorer.load(model_path)
+    report = scorer.score(transcript.session_id, transcript.turns, top=top)
+
+    typer.echo(report.render())
+    typer.echo(f"\nproject: {transcript.repo}")
+    typer.echo(f"tokens so far: {transcript.total_tokens:,}")
+    if transcript.malformed_lines:
+        typer.echo(f"skipped {transcript.malformed_lines} unparseable lines")
 
 
 CHECKS = {

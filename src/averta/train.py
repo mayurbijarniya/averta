@@ -19,6 +19,7 @@ against. Both are reported with their polarity named.
 from __future__ import annotations
 
 import time
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -98,6 +99,39 @@ def load(db: str, cut_point: int) -> Dataset:
 
     return Dataset(
         X=X, y_fail=y_fail, groups=groups, session_ids=session_ids, cut_point=cut_point
+    )
+
+
+def load_pooled(db: str, cut_points: Sequence[int]) -> Dataset:
+    """Every cut point in one frame, for a model that must serve any prefix length.
+
+    The per-cut datasets are what the gate is evaluated on. A deployed monitor
+    scores whatever prefix exists right now, so it needs a model trained across
+    prefix lengths rather than at a single one — otherwise features like
+    `n_tool_calls` fall far outside the range it was fitted on.
+    """
+    conn = duckdb.connect(db, read_only=True)
+    try:
+        columns = ", ".join(FEATURE_NAMES)
+        placeholders = ", ".join("?" * len(cut_points))
+        rows = conn.execute(
+            f"SELECT session_id, repo, outcome, {columns} "
+            f"FROM prefix_features WHERE cut_point IN ({placeholders}) "
+            "ORDER BY session_id, cut_point",
+            list(cut_points),
+        ).fetchall()
+    finally:
+        conn.close()
+
+    if not rows:
+        raise ValueError("no pooled rows; run `averta features` first")
+
+    return Dataset(
+        X=np.array([row[3:] for row in rows], dtype=float),
+        y_fail=np.array([0 if bool(row[2]) else 1 for row in rows]),
+        groups=np.array([row[1] for row in rows]),
+        session_ids=np.array([row[0] for row in rows]),
+        cut_point=-1,
     )
 
 
