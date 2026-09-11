@@ -10,7 +10,7 @@ import random
 import pytest
 
 from averta.features import EXTRACTORS, extract
-from tests.factories import action, observation, session
+from averta.testing import action, observation, session
 
 CUTS = [1, 3, 5, 10, 20]
 

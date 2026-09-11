@@ -10,7 +10,7 @@ from averta.features.sequence import (
     novelty_rate_recent,
     repeat_acceleration,
 )
-from tests.factories import action, observation
+from averta.testing import action, observation
 
 
 def actions(paths: list[str]) -> list:

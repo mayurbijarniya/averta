@@ -6,7 +6,13 @@ import pytest
 from averta import mcp_server
 from averta.features import FEATURE_NAMES
 from averta.monitor import fit_and_save
-from tests.test_monitor import assistant, tool_result, write_transcript
+from averta.testing import (
+    claude_assistant_record as assistant,
+)
+from averta.testing import (
+    claude_tool_result_record as tool_result,
+)
+from averta.testing import write_transcript
 
 CUTS = (3, 5, 10, 20, 40)
 

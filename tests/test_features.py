@@ -16,7 +16,7 @@ from averta.features.extractors import (
     turns_since_clean_observation,
     turns_since_error,
 )
-from tests.factories import action, bash, observation
+from averta.testing import action, bash, observation
 
 
 class TestErrorFeatures:

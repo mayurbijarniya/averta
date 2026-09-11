@@ -12,40 +12,15 @@ from averta.monitor import (
     Scorer,
     fit_and_save,
 )
-from tests.factories import session
+from averta.testing import (
+    claude_assistant_record as assistant,
+)
+from averta.testing import (
+    claude_tool_result_record as tool_result,
+)
+from averta.testing import session, write_transcript
 
 CUTS = (3, 5, 10, 20, 40)
-
-
-def write_transcript(tmp_path, records):
-    project = tmp_path / "-some-project"
-    project.mkdir()
-    path = project / "abc123.jsonl"
-    path.write_text("\n".join(json.dumps(record) for record in records))
-    return path
-
-
-def assistant(text="ok", tool=None, tool_input=None, usage=None):
-    content = [{"type": "text", "text": text}]
-    if tool:
-        content.append({"type": "tool_use", "name": tool, "input": tool_input or {}})
-    message = {"role": "assistant", "content": content}
-    if usage:
-        message["usage"] = usage
-    return {"type": "assistant", "message": message, "cwd": "/home/me/proj"}
-
-
-def tool_result(body="done", is_error=False):
-    return {
-        "type": "user",
-        "message": {
-            "role": "user",
-            "content": [
-                {"type": "tool_result", "content": body, "is_error": is_error}
-            ],
-        },
-        "cwd": "/home/me/proj",
-    }
 
 
 class TestClaudeCodeAdapter:
