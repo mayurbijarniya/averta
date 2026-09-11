@@ -5,6 +5,12 @@ from pathlib import Path
 
 import typer
 
+from averta.analyze import (
+    inference_cost,
+    permutation_importance,
+    render_cost,
+    render_importance,
+)
 from averta.dataset import build as build_prefix_features
 from averta.ingest import ADAPTERS
 from averta.report import write_phase1_artifacts
@@ -166,6 +172,43 @@ def train(
 
     if not verdict.passed:
         raise typer.Exit(code=1)
+
+
+@app.command()
+def diagnose(
+    db: Path = typer.Option(DEFAULT_DB),
+    cut: int = typer.Option(GATE_CUT_POINT),
+    model: str = typer.Option("logistic", help="model to analyse in depth"),
+    out: Path = typer.Option(Path("artifacts/phase4")),
+) -> None:
+    """Feature importance, calibration, and CPU inference cost."""
+    if not db.exists():
+        raise typer.BadParameter(f"{db} does not exist")
+
+    data = load_dataset(str(db), cut)
+    typer.echo(f"cut point {cut}: {len(data)} rows, failure rate {data.failure_rate:.2%}\n")
+
+    typer.echo(f"permutation importance ({model}, repo-grouped folds)")
+    importance = permutation_importance(data, model)
+    typer.echo(render_importance(importance))
+
+    typer.echo("\nCPU inference cost")
+    profiles = [
+        inference_cost(data, name)
+        for name in ("logistic", "random_forest", "hist_gradient_boosting", "xgboost")
+    ]
+    typer.echo(render_cost(profiles))
+
+    out.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "cut_point": cut,
+        "model": model,
+        "importance": [vars(item) for item in importance],
+        "cost": [vars(profile) for profile in profiles],
+    }
+    with open(out / f"diagnostics_cut{cut}.json", "w") as fh:
+        json.dump(payload, fh, indent=2, default=float)
+    typer.echo(f"\nwrote {out / f'diagnostics_cut{cut}.json'}")
 
 
 CHECKS = {
