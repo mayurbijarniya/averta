@@ -47,7 +47,13 @@ def prefix_table_ddl() -> str:
 
 
 def _grouped_turns(conn: duckdb.DuckDBPyConnection) -> Iterator[tuple[str, list[dict[str, Any]]]]:
-    cursor = conn.execute(TURN_QUERY)
+    """Stream turns grouped by session.
+
+    Reads through an independent cursor. Issuing writes on the connection that
+    is mid-stream resets its cursor state and truncates rows underneath the
+    iteration.
+    """
+    cursor = conn.cursor().execute(TURN_QUERY)
     columns = [description[0] for description in cursor.description]
 
     current_id: str | None = None
