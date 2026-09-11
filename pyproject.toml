@@ -9,7 +9,11 @@ dependencies = [
     "huggingface-hub>=0.26",
     "polars>=1.0",
     "duckdb>=1.1",
+    "typer>=0.15",
 ]
+
+[project.scripts]
+averta = "averta.cli:app"
 
 [project.optional-dependencies]
 dev = [
