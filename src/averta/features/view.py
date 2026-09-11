@@ -8,7 +8,20 @@ from typing import Any, NamedTuple
 
 OBSERVATION_ROLES = frozenset({"tool", "function"})
 
+# Editing is expressed differently by each agent scaffold, and a feature that
+# only understands one of them silently reports zero on the other. Measured
+# against local Claude Code sessions, `n_edits` and `n_files_touched` came out
+# at exactly 0.00 against corpus means of 4.11 and 1.78 for precisely this
+# reason. Both vocabularies are recognised.
+#
+# OpenHands / SWE-Gym: one `str_replace_editor` tool, the operation in a
+# `command` argument, target in `path`.
 EDIT_COMMANDS = frozenset({"create", "str_replace", "insert", "write"})
+
+# Claude Code: separate tools per operation, target in `file_path`.
+EDIT_TOOLS = frozenset({"Edit", "Write", "MultiEdit", "NotebookEdit"})
+
+PATH_KEYS = ("path", "file_path", "notebook_path", "filePath")
 
 TEST_MARKERS = ("pytest", "unittest", "tox", "nosetests", " test", "test_")
 
@@ -44,12 +57,20 @@ class TurnView(NamedTuple):
             return None
         return payload.get(key) if isinstance(payload, dict) else None
 
+    def first_path(self) -> str | None:
+        for key in PATH_KEYS:
+            value = self.argument(key)
+            if isinstance(value, str) and value:
+                return value
+        return None
+
     @property
     def edited_path(self) -> str | None:
-        command = self.argument("command")
-        if command in EDIT_COMMANDS:
-            path = self.argument("path")
-            return path if isinstance(path, str) else None
+        """Target of a write, under either tool vocabulary."""
+        if self.tool_name in EDIT_TOOLS:
+            return self.first_path()
+        if self.argument("command") in EDIT_COMMANDS:
+            return self.first_path()
         return None
 
     @property

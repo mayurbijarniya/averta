@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import numpy as np
 import typer
 
 from averta.adapters import discover_transcripts, read_transcript
@@ -16,6 +17,8 @@ from averta.analyze import (
 )
 from averta.dataset import CUT_POINTS
 from averta.dataset import build as build_prefix_features
+from averta.drift import compare
+from averta.features import FEATURE_NAMES, extract
 from averta.ingest import ADAPTERS
 from averta.metrics import brier_score
 from averta.monitor import DEFAULT_MODEL_PATH, Calibrator, Scorer, fit_and_save
@@ -296,6 +299,59 @@ def savings(
             default=float,
         )
     typer.echo(f"\nwrote {out / f'savings_cut{cut}.json'}")
+
+
+@app.command()
+def drift(
+    db: Path = typer.Option(DEFAULT_DB),
+    cut: int = typer.Option(40, help="prefix length at which to compare"),
+    out: Path = typer.Option(Path("artifacts/phase6")),
+) -> None:
+    """Compare feature distributions between the corpus and local sessions."""
+    if not db.exists():
+        raise typer.BadParameter(f"{db} does not exist")
+
+    paths = discover_transcripts()
+    if not paths:
+        raise typer.BadParameter("no local transcripts under ~/.claude/projects")
+
+    rows = []
+    used = []
+    for path in paths:
+        transcript = read_transcript(path)
+        if len(transcript) < cut:
+            continue
+        values = extract(transcript.turns[:cut])
+        rows.append([values[name] for name in FEATURE_NAMES])
+        used.append(transcript.session_id)
+
+    if not rows:
+        raise typer.BadParameter(
+            f"no local session reached {cut} turns; try a smaller --cut"
+        )
+
+    corpus = load_dataset(str(db), cut)
+    report = compare(FEATURE_NAMES, corpus.X, np.array(rows, dtype=float))
+
+    typer.echo(report.render())
+    typer.echo(f"\nlocal sessions used: {', '.join(s[:8] for s in used)}")
+
+    out.mkdir(parents=True, exist_ok=True)
+    with open(out / f"drift_cut{cut}.json", "w") as fh:
+        json.dump(
+            {
+                "cut_point": cut,
+                "n_corpus": report.n_corpus,
+                "n_local": report.n_local,
+                "underpowered": report.underpowered,
+                "sessions": used,
+                "shifts": [vars(s) for s in report.shifts],
+            },
+            fh,
+            indent=2,
+            default=float,
+        )
+    typer.echo(f"wrote {out / f'drift_cut{cut}.json'}")
 
 
 @app.command()

@@ -119,8 +119,13 @@ def action_compression_ratio(prefix: Prefix) -> float:
     """Compressed size over raw size for the action stream.
 
     A cheap global measure of redundancy: a repetitive sequence compresses
-    further. Reported as a ratio so it is scale-free, and returns 1.0 when
-    there is nothing to compress.
+    further. Returns 1.0 when there is nothing to compress.
+
+    Raw deflate is used rather than `zlib.compress`, whose ~11 byte header
+    dominates short inputs — on local sessions that produced ratios of 1.85,
+    which is meaningless for a quantity defined as compressed over raw. The
+    result is still clamped, since even raw deflate adds a few bytes for
+    incompressible input.
     """
     symbols = _symbols(prefix)
     if len(symbols) < 2:
@@ -133,8 +138,9 @@ def action_compression_ratio(prefix: Prefix) -> float:
         alphabet.setdefault(symbol, len(alphabet) % 256)
     raw = bytes(alphabet[symbol] for symbol in symbols)
 
-    compressed = zlib.compress(raw, level=6)
-    return len(compressed) / len(raw)
+    compressor = zlib.compressobj(level=6, wbits=-15)
+    compressed = compressor.compress(raw) + compressor.flush()
+    return min(len(compressed) / len(raw), 1.0)
 
 
 def edit_then_error_rate(prefix: Prefix) -> float:
