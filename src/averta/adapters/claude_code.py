@@ -30,7 +30,6 @@ from typing import Any
 
 from averta.features.view import TurnView
 from averta.normalize import digest, error_signature, is_valid_json, looks_like_error
-from averta.schema import CONTENT_HEAD_CHARS
 
 TRANSCRIPT_ROOT = Path.home() / ".claude" / "projects"
 
@@ -175,7 +174,8 @@ def _turns_from_record(
             # The explicit flag is authoritative; fall back to the text
             # heuristic only when it is absent.
             flagged = block.get("is_error")
-            is_error = bool(flagged) if flagged is not None else looks_like_error(body)
+            explicit = flagged is not None
+            is_error = bool(flagged) if explicit else looks_like_error(body)
             yield TurnView(
                 turn_index=turn_index,
                 role="tool",
@@ -187,7 +187,9 @@ def _turns_from_record(
                 n_tool_calls=0,
                 content_chars=len(body),
                 is_error=is_error,
-                error_signature=error_signature(body) if is_error else None,
+                error_signature=(
+                    error_signature(body, force=explicit) if is_error else None
+                ),
             )
             turn_index += 1
         return
@@ -211,7 +213,3 @@ def discover_transcripts(root: Path = TRANSCRIPT_ROOT) -> list[Path]:
     if not root.exists():
         return []
     return sorted(root.glob("*/*.jsonl"), key=lambda p: p.stat().st_mtime, reverse=True)
-
-
-def head(text: str) -> str | None:
-    return text[:CONTENT_HEAD_CHARS] or None

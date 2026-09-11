@@ -121,9 +121,17 @@ def looks_like_error(content: str) -> bool:
     return bool(match and match.group(1) != "0")
 
 
-def error_signature(content: str) -> str | None:
-    """Reduce an error observation to a stable identity string."""
-    if not content or not looks_like_error(content):
+def error_signature(content: str, force: bool = False) -> str | None:
+    """Reduce an error observation to a stable identity string.
+
+    `force` is for sources that flag failure explicitly — Claude Code sets
+    `is_error` on tool results. There the flag is authoritative, and text that
+    does not match any known error pattern must still yield a signature, or
+    the failure is counted without anything to group it by.
+    """
+    if not content:
+        return None
+    if not force and not looks_like_error(content):
         return None
 
     lines = [line for line in content.splitlines() if line.strip()]
@@ -145,5 +153,8 @@ def error_signature(content: str) -> str | None:
 
     if match := EXIT_CODE.search(content):
         return f"exit code {match.group(1)}"
+
+    if force:
+        return scrub(content[:MAX_SIGNATURE_CHARS])[:MAX_SIGNATURE_CHARS] or "unlabelled error"
 
     return None
