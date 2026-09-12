@@ -1,9 +1,9 @@
 # Averta
 
-**Predicting when an AI coding agent is about to fail — from a 2 KB model that
-scores a live session in 0.18 ms on one CPU core.**
+**Predicting when an AI coding agent is about to fail — from a 2.1 KB model
+that scores a live session in 0.18 ms on one CPU core.**
 
-![tests](https://img.shields.io/badge/tests-272%20passing-2f7d4f)
+![tests](https://img.shields.io/badge/tests-passing-1a7f37)
 ![python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![license](https://img.shields.io/badge/license-MIT-lightgrey)
 ![gate](https://img.shields.io/badge/pre--registered%20gate-not%20met-b0342f)
@@ -40,7 +40,7 @@ That is the point of the project, not a footnote to it.
 | | |
 |---|---|
 | **The question** | Can a cheap CPU model replace a 0.6B neural monitor for early failure detection? |
-| **The answer** | It recovers roughly **half** the token savings — 8.1% against a reported 14.6–20.4% — from a 2.1 KB model rather than a 0.6B-parameter one |
+| **The answer** | It recovers roughly **half** the token savings — 8.4% against a reported 14.6–20.4% — from a 2.1 KB model rather than a 0.6B-parameter one |
 | **The gate** | Required 0.25 recall at a 5% false-positive budget. Reached **0.191**. Not met. |
 | **What is solid** | AUROC **0.677** [0.651, 0.697] against three baselines pinned at 0.500 |
 
@@ -253,11 +253,11 @@ netted off the savings.
 |---|---|---|---|---|---|
 | 0.55 | 0.501 | 0.246 | 25,207,866 | 33.6% | 121 |
 | 0.65 | 0.283 | 0.096 | 11,932,608 | 15.9% | 47 |
-| **0.80** | **0.181** | **0.047** | **6,103,533** | **8.1%** | **23** |
+| **0.80** | **0.183** | **0.047** | **6,276,339** | **8.4%** | **23** |
 | 0.90 | 0.051 | 0.010 | 1,822,964 | 2.4% | 5 |
 
 At a comparable false-positive budget — 4.7% against the paper's 5% target —
-this reaches **8.1% estimated token savings** where the 0.6B neural monitor
+this reaches **8.4% estimated token savings** where the 0.6B neural monitor
 reports 14.6–20.4%.
 
 So the honest summary of the central research question: a 2.1 KB linear model
@@ -441,7 +441,7 @@ agent relaying a number also relays its limits.
 ## Development
 
 ```bash
-.venv/bin/python -m pytest -q                    # 187 tests
+.venv/bin/python -m pytest -q
 .venv/bin/python -m ruff check src tests scripts
 ```
 

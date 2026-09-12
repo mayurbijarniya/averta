@@ -37,12 +37,16 @@ DATASET = "https://huggingface.co/datasets/SWE-Gym/OpenHands-Sampled-Trajectorie
 STYLE = """
 :root {
   --ink:#0d0f13; --muted:#5b6371; --faint:#8b93a1; --line:#e6e8ec; --bg:#fff;
-  --panel:#f8f9fb; --accent:#2f7d4f; --warn:#b0342f; --r:9px;
+  --panel:#f8f9fb; --raised:#fff;
+  /* Link blue is distinct from status green. Green means "pass" and nothing
+     else, so it cannot be mistaken for "this is clickable". */
+  --link:#1f6feb; --ok:#1a7f37; --warn:#b0342f; --r:9px;
   --mono:ui-monospace,"Geist Mono","IBM Plex Mono",SFMono-Regular,Menlo,monospace;
 }
 @media (prefers-color-scheme:dark){:root{
   --ink:#eceef2; --muted:#98a1b0; --faint:#6f7889; --line:#252a33; --bg:#0f1115;
-  --panel:#161a20; --accent:#6fbf8d; --warn:#e58a85;
+  --panel:#161a20; --raised:#171b21;
+  --link:#589bff; --ok:#3fb950; --warn:#e58a85;
 }}
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
@@ -52,27 +56,38 @@ body{
   -webkit-font-smoothing:antialiased;font-feature-settings:"cv02","cv03","cv04";
 }
 .skip{position:absolute;left:-9999px}
-.skip:focus{left:1rem;top:1rem;background:var(--accent);color:#fff;padding:.5rem 1rem;
+.skip:focus{left:1rem;top:1rem;background:var(--link);color:#fff;padding:.5rem 1rem;
   border-radius:var(--r);z-index:20}
 
 /* Sidebar + content. Collapses to a single column below 960px. */
-.shell{display:grid;grid-template-columns:1fr;max-width:78rem;margin:0 auto}
+.shell{display:grid;grid-template-columns:1fr;max-width:88rem;margin:0 auto}
 @media (min-width:960px){
-  .shell{grid-template-columns:15rem 1fr;gap:3rem}
+  .shell{grid-template-columns:16rem minmax(0,1fr);gap:4rem}
   aside{position:sticky;top:0;height:100vh;overflow-y:auto;padding:2.5rem 0 2rem 1.5rem}
 }
-aside{padding:1.5rem}
+aside{padding:1.5rem;border-right:1px solid var(--line);background:var(--panel)}
+@media (max-width:959px){aside{border-right:none;border-bottom:1px solid var(--line)}}
 .brand{display:flex;align-items:center;gap:.55rem;font-weight:660;letter-spacing:-.02em;
   font-size:1.05rem;margin-bottom:.15rem}
-.brand .lucide{color:var(--accent)}
-.brandsub{color:var(--faint);font-size:.78rem;margin:0 0 1.5rem;line-height:1.45}
+.brand .lucide{color:var(--link)}
+.brandsub{color:var(--faint);font-size:.78rem;margin:0 0 .6rem;line-height:1.45}
+.sidestat{display:flex;gap:.9rem;margin:0 0 1.3rem;padding:.55rem 0;
+  border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.sidestat div{font-size:.72rem;color:var(--faint);line-height:1.35}
+.sidestat b{display:block;font-size:.94rem;color:var(--ink);font-weight:650;
+  font-variant-numeric:tabular-nums}
 nav ol{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:.15rem}
 @media (min-width:960px){nav ol{display:block}}
-nav a{display:flex;align-items:center;gap:.55rem;padding:.36rem .6rem;border-radius:7px;
-  color:var(--muted);text-decoration:none;font-size:.855rem;line-height:1.3}
-nav a:hover{background:var(--panel);color:var(--ink);text-decoration:none}
+nav{margin-bottom:.4rem}
+nav a{display:flex;align-items:center;gap:.6rem;padding:.4rem .65rem;border-radius:7px;
+  color:var(--muted);text-decoration:none;font-size:.85rem;line-height:1.3;
+  border-left:2px solid transparent;transition:color .12s ease,background .12s ease}
+nav a:hover{background:var(--raised);color:var(--ink);text-decoration:none;
+  border-left-color:var(--link)}
 nav a .lucide{color:var(--faint);flex:none}
-nav a:hover .lucide{color:var(--accent)}
+nav a:hover .lucide{color:var(--link)}
+/* :target highlights whichever section the reader jumped to. */
+section:target{scroll-margin-top:1rem}
 
 main{padding:0 1.5rem 6rem;min-width:0}
 @media (min-width:960px){main{padding:2.5rem 2rem 6rem 0}}
@@ -80,7 +95,7 @@ main{padding:0 1.5rem 6rem;min-width:0}
 header{padding:1rem 0 .5rem}
 h1{font-size:2.15rem;margin:0 0 .35rem;letter-spacing:-.03em;font-weight:680}
 .tagline{font-size:1.02rem;color:var(--muted);margin:0 0 1.4rem;max-width:44rem}
-.question{font-size:1rem;color:var(--ink);border-left:2px solid var(--accent);
+.question{font-size:1rem;color:var(--ink);border-left:2px solid var(--link);
   padding:.15rem 0 .15rem 1rem;margin:0 0 1.6rem;max-width:44rem}
 .badges{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.5rem}
 .badge{display:inline-flex;align-items:center;gap:.35rem;font-size:.735rem;font-weight:560;
@@ -93,15 +108,15 @@ section{padding-top:2.75rem;scroll-margin-top:1rem}
 h2{display:flex;align-items:center;gap:.55rem;font-size:1.22rem;margin:0 0 .25rem;
   letter-spacing:-.02em;font-weight:640}
 h2 .lucide{color:var(--faint);flex:none}
-.sub{color:var(--muted);font-size:.9rem;margin:0 0 1.1rem;max-width:46rem}
+.sub{color:var(--muted);font-size:.92rem;margin:0 0 1.2rem;max-width:54rem}
 h3{font-size:.755rem;margin:1.9rem 0 .55rem;color:var(--faint);text-transform:uppercase;
   letter-spacing:.09em;font-weight:680}
-p{margin:0 0 .95rem;max-width:46rem}
-ul{max-width:46rem;padding-left:1.15rem}
+p{margin:0 0 .95rem;max-width:54rem}
+ul{max-width:54rem;padding-left:1.15rem}
 li{margin-bottom:.35rem}
 
 .verdict{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
-  padding:1.05rem 1.2rem;margin:0 0 1.6rem;max-width:46rem}
+  padding:1.05rem 1.2rem;margin:0 0 1.6rem;max-width:54rem}
 .verdict h3{margin-top:0;color:var(--warn);display:flex;align-items:center;gap:.4rem}
 .verdict p:last-child{margin-bottom:0}
 
@@ -125,18 +140,18 @@ tbody tr:hover td{background:var(--panel)}
 tbody tr.pick td{background:var(--panel);font-weight:620}
 tbody tr.base td{color:var(--faint)}
 td .lucide{vertical-align:-3px;margin-right:.25rem}
-.ok{color:var(--accent);font-weight:600;white-space:nowrap}
+.ok{color:var(--ok);font-weight:600;white-space:nowrap}
 .no{color:var(--warn);font-weight:680;white-space:nowrap}
 
 code{font-family:var(--mono);background:var(--panel);padding:.1em .38em;
   border-radius:5px;font-size:.86em}
 pre{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
   padding:.95rem 1.05rem;overflow-x:auto;font-size:.825rem;line-height:1.6;
-  margin:.9rem 0 1.4rem;font-family:var(--mono);max-width:46rem}
+  margin:.9rem 0 1.4rem;font-family:var(--mono);max-width:54rem}
 pre code{background:none;padding:0;font-size:1em}
 
 figure{margin:1.3rem 0}
-figcaption{color:var(--faint);font-size:.815rem;margin-top:.5rem;max-width:46rem;line-height:1.55}
+figcaption{color:var(--faint);font-size:.815rem;margin-top:.5rem;max-width:54rem;line-height:1.55}
 
 .viz{--s1:#2a78d6;--s2:#eb6834}
 @media (prefers-color-scheme:dark){.viz{--s1:#3987e5;--s2:#d95926}}
@@ -153,21 +168,61 @@ figcaption{color:var(--faint);font-size:.815rem;margin-top:.5rem;max-width:46rem
 .pair{display:grid;gap:.4rem}
 @media (min-width:900px){.pair{grid-template-columns:1fr 1fr}}
 
+/* ---- hero ---------------------------------------------------------------
+   A recruiter gives this a few seconds. The headline numbers therefore sit
+   above the fold at display size, before any prose. */
+.hero{padding:2.2rem 0 .5rem}
+.eyebrow{display:inline-flex;align-items:center;gap:.4rem;font-size:.72rem;
+  font-weight:640;letter-spacing:.09em;text-transform:uppercase;color:var(--warn);
+  background:color-mix(in srgb,var(--warn) 9%,transparent);
+  border:1px solid color-mix(in srgb,var(--warn) 30%,var(--line));
+  padding:.28rem .65rem;border-radius:100px;margin-bottom:1.1rem}
+h1{font-size:clamp(2.3rem,4.4vw,3.1rem);margin:0 0 .5rem;letter-spacing:-.035em;
+  font-weight:700;line-height:1.08}
+.tagline{font-size:clamp(1.02rem,1.5vw,1.18rem);color:var(--muted);margin:0 0 1.9rem;
+  max-width:40rem;line-height:1.55}
+.tagline strong{color:var(--ink);font-weight:620}
+
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(8.5rem,1fr));
+  gap:1px;background:var(--line);border:1px solid var(--line);
+  border-radius:var(--r);overflow:hidden;margin:0 0 1.7rem;max-width:54rem}
+.kpi{background:var(--raised);padding:1rem 1.15rem 1.05rem}
+.kpi .n{font-size:clamp(1.5rem,2.6vw,1.95rem);font-weight:680;letter-spacing:-.035em;
+  font-variant-numeric:tabular-nums;line-height:1.1;display:block}
+.kpi .l{font-size:.735rem;color:var(--faint);text-transform:uppercase;
+  letter-spacing:.07em;margin-top:.3rem;display:block}
+.kpi .s{font-size:.76rem;color:var(--muted);margin-top:.2rem;display:block}
+.kpi.miss .n{color:var(--warn)}
+
+.pitch{font-size:1.02rem;line-height:1.62;max-width:44rem;margin:0 0 1.7rem;
+  padding-left:1rem;border-left:2px solid var(--line)}
+.pitch strong{font-weight:640}
+
+.cta{display:flex;flex-wrap:wrap;gap:.55rem;margin-bottom:.4rem}
+.btn{display:inline-flex;align-items:center;gap:.45rem;padding:.5rem .95rem;
+  border-radius:8px;font-size:.885rem;font-weight:560;text-decoration:none;
+  border:1px solid var(--line);color:var(--ink);background:var(--raised);
+  transition:border-color .12s ease,color .12s ease}
+.btn:hover{border-color:var(--link);color:var(--link);text-decoration:none}
+.btn.primary{background:var(--link);border-color:var(--link);color:#fff}
+.btn.primary:hover{opacity:.9;color:#fff}
+.btn .lucide{flex:none}
+
 .links{display:flex;flex-wrap:wrap;gap:.3rem 1.4rem;margin:.2rem 0 0;font-size:.875rem}
 .links a{display:inline-flex;align-items:center;gap:.4rem;text-decoration:none}
 .links a:hover{text-decoration:underline}
 .out{display:flex;align-items:center;gap:.5rem;margin-top:1.2rem;padding:.4rem .6rem;
   border-radius:7px;font-size:.855rem;color:var(--muted);text-decoration:none;
   border:1px solid var(--line)}
-.out:hover{color:var(--accent);border-color:var(--accent);text-decoration:none}
-.note{color:var(--faint);font-size:.855rem;max-width:46rem}
+.out:hover{color:var(--link);border-color:var(--link);text-decoration:none}
+.note{color:var(--faint);font-size:.855rem;max-width:54rem}
 .flag{display:flex;gap:.6rem;border-left:2px solid var(--line);padding:.1rem 0 .1rem .9rem;
-  color:var(--muted);font-size:.885rem;margin:1.1rem 0;max-width:46rem}
+  color:var(--muted);font-size:.885rem;margin:1.1rem 0;max-width:54rem}
 .flag .lucide{color:var(--faint);flex:none;margin-top:.2rem}
 
 footer{margin-top:4rem;padding-top:1.3rem;border-top:1px solid var(--line);
   color:var(--faint);font-size:.83rem}
-a{color:var(--accent)}
+a{color:var(--link)}
 a:hover{text-decoration:underline}
 .lucide{flex:none}
 
@@ -271,6 +326,47 @@ def _gate_table(gate: dict[str, Any]) -> str:
         rows.append([_e(label), mark])
         classes.append("" if ok else "fail")
     return _table(["pre-registered criterion", "result"], rows, classes)
+
+
+def _kpis(
+    best: dict[str, Any],
+    cost: dict[str, Any] | None,
+    savings: dict[str, Any] | None,
+) -> str:
+    """The four numbers a reader should leave with, at display size."""
+    cells = [
+        (f"{best['auroc']:.3f}", "AUROC", "vs 0.500 baselines", ""),
+        (f"{best['recall_at_fpr']:.3f}", "recall @ 5% FPR", "bar was 0.250", "miss"),
+    ]
+    if cost:
+        cells.append(
+            (
+                f"{cost['predict_single_ms_p50']:.2f}<span style='font-size:.6em'> ms</span>",
+                "CPU latency",
+                f"{cost['parameters_bytes'] / 1024:.1f} KB model",
+                "",
+            )
+        )
+    if savings:
+        near = min(
+            savings["points"],
+            key=lambda p: abs(p["false_positive_rate"] - 0.05),
+        )
+        cells.append(
+            (
+                f"{near['savings_rate']:.1%}",
+                "tokens saved",
+                "paper reports 14.6–20.4%",
+                "",
+            )
+        )
+
+    body = "".join(
+        f'<div class="kpi {cls}"><span class="n">{n}</span>'
+        f'<span class="l">{_e(label)}</span><span class="s">{_e(sub)}</span></div>'
+        for n, label, sub, cls in cells
+    )
+    return f'<div class="kpis">{body}</div>'
 
 
 def _auroc_chart(artifacts: Path) -> str:
@@ -446,26 +542,24 @@ def build(artifacts: Path, out: Path) -> Path:
         '<a class="skip" href="#question">Skip to content</a>'
         '<div class="shell">'
         f"<aside>{NAV_SLOT}</aside>"
-        "<main><header>"
+        "<main><header class=\"hero\">"
+        f'<span class="eyebrow">{icon("flask", 13)}Pre-registered study</span>'
         "<h1>Averta</h1>"
         '<p class="tagline">Predicting when an AI coding agent is about to fail — '
-        "from a 2.1 KB model that scores a live session in 0.18 ms on one CPU "
-        "core.</p>"
-        '<p class="question">It recovers roughly <strong>half</strong> the token '
-        "savings reported for a 0.6B neural monitor, and still missed the bar "
-        "that was set for it before any model was trained. Both halves of that "
-        "are the result.</p>"
-        '<div class="badges">'
-        f'<span class="badge warn">{icon("cross", 14)}Pre-registered gate not met</span>'
-        f'<span class="badge">{icon("branch", 14)}Two disclosed attempts</span>'
-        f'<span class="badge">{icon("cpu", 14)}2.1 KB · 0.18 ms</span>'
-        "</div>"
-        '<p class="links">'
-        f'<a href="{REPO}">{icon("terminal", 15)}Source and reproduction steps</a>'
-        f'<a href="{REPO}/blob/main/MODEL_CARD.md">{icon("alert", 15)}'
-        "Model card — limits and intended use</a>"
-        f'<a href="{PAPER}">{icon("flask", 15)}The paper this reproduces</a>'
-        "</p></header>"
+        "from a <strong>2.1 KB model</strong> that scores a live session in "
+        "<strong>0.18 ms</strong> on one CPU core.</p>"
+        + _kpis(best, logistic_cost, savings)
+        + '<p class="pitch">It recovers roughly <strong>half</strong> the token '
+        "savings reported for a 0.6B neural monitor — and still missed the bar "
+        "set for it before any model was trained. Both halves of that are the "
+        "result, and the bar was never moved to fit.</p>"
+        '<div class="cta">'
+        f'<a class="btn primary" href="{REPO}">{icon("terminal", 16)}View source</a>'
+        f'<a class="btn" href="#results">{icon("chart", 16)}Jump to results</a>'
+        f'<a class="btn" href="{REPO}/blob/main/MODEL_CARD.md">'
+        f'{icon("alert", 16)}Model card</a>'
+        f'<a class="btn" href="{PAPER}">{icon("flask", 16)}The paper</a>'
+        "</div></header>"
     )
 
     # ---- the question -----------------------------------------------------
@@ -747,7 +841,7 @@ def build(artifacts: Path, out: Path) -> Path:
                     "Highlighted row is the operating point nearest a 5% false-positive budget.",
                 ),
                 "<p>At a comparable budget — 4.7% against the paper's 5% target — this "
-                "reaches <strong>8.1% estimated token savings</strong> where the 0.6B "
+                "reaches <strong>8.4% estimated token savings</strong> where the 0.6B "
                 "neural monitor reports 14.6&ndash;20.4%. Roughly half the value, at a "
                 "fraction of the size.</p>"
                 '<p class="flag">{FLAG_ICON}Tokens are <strong>estimated</strong> from content '
@@ -885,6 +979,11 @@ def build(artifacts: Path, out: Path) -> Path:
     brand = (
         f'<div class="brand">{icon("flask", 19)}Averta</div>'
         '<p class="brandsub">CPU-native failure prediction<br>for AI coding agents</p>'
+        '<div class="sidestat">'
+        "<div><b>5,976</b>sessions</div>"
+        "<div><b>33</b>features</div>"
+        "<div><b>2.1 KB</b>model</div>"
+        "</div>"
     )
     outbound = (
         f'<a class="out" href="{REPO}">{icon("terminal", 15)}View source</a>'
