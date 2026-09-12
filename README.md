@@ -106,7 +106,7 @@ Measured over all 6,055 trajectories:
 Two properties of this data shape the evaluation. The positive class is rare
 at 8.1%, so metrics that tolerate imbalance are required. And **session length
 barely separates the classes**, resolved sessions average 39.86 turns against
-39.23 for unresolved. Prior work has described unsuccessful agent runs as
+39.66 for unresolved. Prior work has described unsuccessful agent runs as
 tending to be longer; that does not reproduce here, which makes turn count a
 near-useless predictor on its own and raises the bar for what the remaining
 features must contribute.

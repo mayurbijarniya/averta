@@ -2,7 +2,7 @@
 
 Committed before any model was trained. Revised once, on 2026-09-10, after
 Phase 0 measured turn counts as near-identical across outcomes (39.86 resolved
-against 39.23 unresolved), which left the turn-index baseline close to chance
+against 39.66 unresolved), which left the turn-index baseline close to chance
 and made the original relative threshold trivial to clear. That revision
 responded to data statistics, not to model results.
 

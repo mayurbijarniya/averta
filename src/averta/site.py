@@ -29,7 +29,9 @@ from averta.charts import (
     line_chart,
     paired_charts,
 )
+from averta.features import FEATURE_NAMES
 from averta.icons import SECTION_ICONS, icon
+from averta.thresholds import TARGET_FPR
 
 PAPER = "https://arxiv.org/abs/2608.03222"
 REPO = "https://github.com/mayurbijarniya/averta"
@@ -637,6 +639,86 @@ def _savings_charts(savings: dict[str, Any]) -> str:
     )
 
 
+def _figures(
+    gate: dict[str, Any],
+    diag: dict[str, Any] | None,
+    savings: dict[str, Any] | None,
+    corpus: dict[str, Any] | None,
+) -> dict[str, str]:
+    """Every artifact-derived number the prose quotes, formatted once.
+
+    Sentences used to carry these as literals. That is how the page came to
+    claim a Brier score its own chart contradicted, and to state a mean turn
+    count for unresolved sessions that no longer matched phase 1. A literal in
+    a sentence is not connected to anything; rebuilding cannot correct it and
+    no test can see it. Anything here is read at build time instead, so the
+    prose cannot disagree with the tables beside it.
+
+    Figures that are *not* here are the ones that must never move: the paper's
+    reported results, the pre-registered thresholds, and the superseded
+    attempt-1 numbers, which describe a run that no longer exists.
+    """
+    best = next(r for r in gate["results"] if r["name"] == gate["gate"]["model"])
+    out = {
+        "auroc": f"{best['auroc']:.3f}",
+        "recall": f"{best['recall_at_fpr']:.3f}",
+        "rows": f"{gate['diagnostics']['rows']:,}",
+        "failure_rate": f"{gate['diagnostics']['failure_rate'] * 100:.2f}%",
+        "n_features": str(len(FEATURE_NAMES)),
+    }
+
+    if diag:
+        cost = next((c for c in diag["cost"] if c["model"] == gate["gate"]["model"]), None)
+        if cost:
+            out["size"] = f"{cost['parameters_bytes'] / 1024:.1f} KB"
+            out["latency"] = f"{cost['predict_single_ms_p50']:.2f} ms"
+
+    if corpus:
+        out["sessions"] = f"{corpus['sessions']:,}"
+        out["resolved"] = f"{corpus['resolved']:,}"
+        for row in corpus.get("by_outcome", []):
+            key = "turns_resolved" if row["resolved"] else "turns_unresolved"
+            out[key] = f"{row['mean_turns']:.2f}"
+
+    if savings:
+        # The operating point the page quotes: most tokens saved without
+        # exceeding the pre-registered 5% false-positive budget.
+        eligible = [p for p in savings["points"] if p["false_positive_rate"] <= TARGET_FPR]
+        if eligible:
+            point = max(eligible, key=lambda p: p["savings_rate"])
+            out["savings"] = f"{point['savings_rate'] * 100:.1f}%"
+            out["savings_fpr"] = f"{point['false_positive_rate'] * 100:.1f}%"
+
+    # Sentences whose wording depends on whether an optional artifact exists.
+    # Composed here so the prose below never has to test for a missing key, and
+    # so an absent measurement produces an honest sentence rather than a blank.
+    measured_cost = "size" in out and "latency" in out
+    out["hero_cost"] = (
+        f"using a <strong>{out['size']} model</strong> that scores a live session "
+        f"in <strong>{out['latency']}</strong> on one CPU core."
+        if measured_cost
+        else "using a compact linear model that scores a live session on one CPU core."
+    )
+    out["establish_cost"] = (
+        f"a {out['size'].replace(' ', '&nbsp;')} linear model at "
+        f"{out['latency'].replace(' ', '&nbsp;')} CPU inference"
+        if measured_cost
+        else "a compact linear model on commodity CPU"
+    )
+    out["turns_phrase"] = (
+        f"sessions average {out['turns_resolved']} turns against "
+        f"{out['turns_unresolved']} for unresolved"
+        if "turns_resolved" in out and "turns_unresolved" in out
+        else "resolved and unresolved sessions run to nearly identical lengths"
+    )
+    out["positives_phrase"] = (
+        f"{out['n_features']} features, {out['resolved']} positives"
+        if "resolved" in out
+        else f"{out['n_features']} features, few positives"
+    )
+    return out
+
+
 def _load(path: Path) -> dict[str, Any] | None:
     if not path.exists():
         return None
@@ -663,6 +745,7 @@ def build(artifacts: Path, out: Path) -> Path:
         )
 
     best = next(r for r in gate["results"] if r["name"] == gate["gate"]["model"])
+    fig = _figures(gate, diag, savings, corpus)
     logistic_cost = None
     if diag:
         logistic_cost = next(
@@ -693,8 +776,7 @@ def build(artifacts: Path, out: Path) -> Path:
         f'<span class="eyebrow">{icon("flask", 13)}Pre-registered study</span>'
         "<h1>Averta</h1>"
         '<p class="tagline">Predicting when an AI coding agent is about to fail, '
-        "using a <strong>2.1 KB model</strong> that scores a live session in "
-        "<strong>0.18 ms</strong> on one CPU core.</p>"
+        f"{fig['hero_cost']}</p>"
         + _kpis(best, logistic_cost, savings)
         + '<p class="pitch">It recovers roughly <strong>half</strong> the token '
         "savings reported for a 0.6B neural monitor, and still missed the bar "
@@ -734,8 +816,8 @@ def build(artifacts: Path, out: Path) -> Path:
             "attempts judged against identical criteria. Four of five criteria "
             f"passed; recall at a 5% false-positive budget reached "
             f"<strong>{best['recall_at_fpr']:.3f}</strong> against a required 0.25.</p>"
-            "<p>What the work does establish: a 2.1&nbsp;KB linear model at "
-            "0.18&nbsp;ms CPU inference recovers roughly <strong>half</strong> the "
+            f"<p>What the work does establish: {fig['establish_cost']} "
+            "recovers roughly <strong>half</strong> the "
             "token savings reported for a 0.6B neural monitor. The cost reduction "
             "is large and the capability gap is real.</p></div>"
             '<p class="note">Every number on this page was measured before it was '
@@ -769,7 +851,7 @@ def build(artifacts: Path, out: Path) -> Path:
                 "<p>Two properties shape everything downstream. The positive class is "
                 "rare, so metrics that tolerate imbalance are required. And "
                 "<strong>session length barely separates the classes</strong>: resolved "
-                "sessions average 39.86 turns against 39.23 for unresolved. Prior work "
+                f"{fig['turns_phrase']}. Prior work "
                 "describes failing agent runs as tending to run longer; that does not "
                 "reproduce here.</p>"
                 '<p class="flag">{FLAG_ICON}The source carries no declared license, so this '
@@ -808,7 +890,8 @@ def build(artifacts: Path, out: Path) -> Path:
             "rate means &ldquo;sessions that would have resolved but were flagged&rdquo; "
             "- the quantity worth constraining. Average precision is reported on the "
             "minority class instead, with its polarity named. Accuracy is never "
-            "reported: at an 89% failure rate, always predicting failure scores 0.89 and "
+            f"reported: at a failure rate of {fig['failure_rate']}, always predicting "
+            f"failure scores {float(fig['failure_rate'].rstrip('%')) / 100:.2f} and "
             "is useless.</p>",
         )
     )
@@ -826,7 +909,7 @@ def build(artifacts: Path, out: Path) -> Path:
             _gate_table(gate),
             '<p class="note">The shortfall is robust: it holds at every cut point '
             "tested and under any model-selection rule. The best recall at a 5% "
-            "false-positive budget anywhere on the curve is 0.191.</p>",
+            f"false-positive budget anywhere on the curve is {fig['recall']}.</p>",
             _auroc_chart(artifacts),
         )
     )
@@ -846,7 +929,8 @@ def build(artifacts: Path, out: Path) -> Path:
             "count knows an action recurred; it cannot express that the agent is cycling "
             "A-B-A-B, or how far back it reached to repeat itself.</p>"
             "<p><strong>Attempt 2</strong> added 10 sequence-structure features. Recall "
-            "rose from 0.155 to 0.191 and AUROC from 0.668 to 0.677, real movement on "
+            f"rose from 0.155 to {fig['recall']} and AUROC from 0.668 to {fig['auroc']}, "
+            "real movement on "
             "exactly the failing criterion, but not enough to clear it.</p>",
             _table(
                 ["feature", "attempt 1", "attempt 2"],
@@ -939,7 +1023,7 @@ def build(artifacts: Path, out: Path) -> Path:
                 headline,
                 _table(["model", "p50 ms", "p95 ms", "size KB"], cost_rows, cost_classes),
                 "<p>The most accurate model is also the smallest and fastest by a wide "
-                "margin. Plausible cause: with 33 features, 491 positives and "
+                f"margin. Plausible cause: with {fig['positives_phrase']} and "
                 "repository-grouped evaluation, trees fit repository-specific thresholds "
                 "that do not survive the group boundary.</p>",
             )
@@ -978,10 +1062,11 @@ def build(artifacts: Path, out: Path) -> Path:
                     classes,
                     "Highlighted row is the operating point nearest a 5% false-positive budget.",
                 ),
-                "<p>At a comparable budget, 4.7% against the paper's 5% target, this "
-                "reaches <strong>8.4% estimated token savings</strong> where the 0.6B "
-                "neural monitor reports 14.6&ndash;20.4%. Roughly half the value, at a "
-                "fraction of the size.</p>"
+                f"<p>At a comparable budget, {fig['savings_fpr']} against the paper's "
+                f"5% target, this reaches <strong>{fig['savings']} estimated token "
+                "savings</strong> where the 0.6B neural monitor reports "
+                "14.6&ndash;20.4%. Roughly half the value, at a fraction of the "
+                "size.</p>"
                 '<p class="flag">{FLAG_ICON}Tokens are <strong>estimated</strong> from content '
                 "length; the corpus records no token counts. Savings count only what "
                 "would have been spent after the cut. Sessions wrongly terminated are "
@@ -997,6 +1082,7 @@ def build(artifacts: Path, out: Path) -> Path:
         worst = sorted(
             drift["shifts"], key=lambda s: -abs(s["standardized_difference"])
         )[:6]
+        outside = sum(1 for s in drift["shifts"] if not s["inside_corpus_range"])
         rows = [
             [
                 f"<code>{_e(s['feature'])}</code>",
@@ -1022,8 +1108,15 @@ def build(artifacts: Path, out: Path) -> Path:
                 _table(
                     ["feature", "corpus", "local", "std diff"], rows, [""] * len(rows)
                 ),
-                "<p>Every comparable feature shifts by more than 1.3 standard "
-                "deviations and some fall outside the training range entirely. Claude "
+                # Was "every comparable feature shifts by more than 1.3 standard
+                # deviations", which the artifact does not support: the table
+                # shows the six largest shifts, while plenty of features move
+                # under half a standard deviation. The claim now describes the
+                # rows actually shown, and both figures are derived.
+                f"<p>The {len(worst)} largest shifts all exceed "
+                f"{min(abs(s['standardized_difference']) for s in worst):.1f} standard "
+                f"deviations, and {outside} of {len(drift['shifts'])} features fall "
+                "outside the training range entirely. Claude "
                 "Code emits more assistant turns per tool call than OpenHands, because "
                 "thinking blocks become their own turns, a &ldquo;turn&rdquo; is not the "
                 "same unit across scaffolds. Cross-scaffold accuracy is therefore "
@@ -1117,11 +1210,19 @@ def build(artifacts: Path, out: Path) -> Path:
     brand = (
         f'<div class="brand">{mark(19)}Averta</div>'
         '<p class="brandsub">CPU-native failure prediction<br>for AI coding agents</p>'
+        # Only the stats actually measured. A tile reading "n/a model" is worse
+        # than one fewer tile.
         '<div class="sidestat">'
-        "<div><b>5,976</b>sessions</div>"
-        "<div><b>33</b>features</div>"
-        "<div><b>2.1 KB</b>model</div>"
-        "</div>"
+        + "".join(
+            f"<div><b>{fig[key]}</b>{label}</div>"
+            for key, label in (
+                ("sessions", "sessions"),
+                ("n_features", "features"),
+                ("size", "model"),
+            )
+            if key in fig
+        )
+        + "</div>"
     )
     # The hero already carries the primary "View source" call to action.
     # Repeating it verbatim here would be noise, so this is an identity line -

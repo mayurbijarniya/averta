@@ -71,6 +71,33 @@ class TestHeadlineFigures:
         for value in (best["auroc"], best["recall_at_fpr"]):
             assert f"{value:.3f}" in prose, f"{value:.3f} is not quoted anywhere"
 
+    def test_cost_figures_match_the_diagnostics(self, gate, diagnostics, prose):
+        cost = next(
+            c for c in diagnostics["cost"] if c["model"] == gate["gate"]["model"]
+        )
+        size = f"{cost['parameters_bytes'] / 1024:.1f} KB"
+        latency = f"{cost['predict_single_ms_p50']:.2f} ms"
+        for value in (size, latency):
+            plain = value.replace(" ", "")
+            assert value in prose or plain in prose, f"{value} is not quoted anywhere"
+
+    def test_mean_turn_counts_match_phase_one(self, prose):
+        summary = _load("phase1/corpus_summary.json")
+        for row in summary.get("by_outcome", []):
+            expected = f"{row['mean_turns']:.2f}"
+            assert expected in prose, (
+                f"mean turns for resolved={row['resolved']} is {expected} "
+                "in the artifact but no document quotes it"
+            )
+
+    def test_savings_figure_matches_the_simulation(self, prose):
+        savings = _load("phase4/savings_cut10.json")
+        eligible = [p for p in savings["points"] if p["false_positive_rate"] <= 0.05]
+        if not eligible:
+            pytest.skip("no operating point within the false-positive budget")
+        point = max(eligible, key=lambda p: p["savings_rate"])
+        assert f"{point['savings_rate'] * 100:.1f}%" in prose
+
     def test_corpus_size_matches_phase_one(self, prose):
         summary = _load("phase1/corpus_summary.json")
         sessions = summary.get("sessions")

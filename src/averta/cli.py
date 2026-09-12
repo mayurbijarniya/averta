@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from importlib.metadata import version
 from pathlib import Path
 
 import numpy as np
@@ -42,6 +43,25 @@ app = typer.Typer(add_completion=False, help="Averta, failure prediction for cod
 
 DEFAULT_DB = Path("data/averta.duckdb")
 BATCH_SIZE = 250
+
+
+def _version(show: bool) -> None:
+    if show:
+        typer.echo(f"averta {version('averta')}")
+        raise typer.Exit
+
+
+@app.callback()
+def main(
+    _: bool = typer.Option(
+        False,
+        "--version",
+        callback=_version,
+        is_eager=True,
+        help="Print the installed version and exit.",
+    ),
+) -> None:
+    """Averta, failure prediction for coding agents."""
 
 
 def require_db(db: Path) -> None:
