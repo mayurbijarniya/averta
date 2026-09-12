@@ -1,25 +1,33 @@
 """Static results page.
 
 The plan called for a Next.js dashboard. This is a generated HTML file
-instead, because the view is read-only: three figures and six tables. A Node
+instead, because the view is read-only: five charts and seven tables. A Node
 toolchain, `node_modules` and a build step would be infrastructure added for
 no capability, and a page generated from the artifacts cannot drift out of
 sync with them.
 
-No CDN, no external CSS, no JavaScript, so it works offline and on any static
-host. Figures are linked from `artifacts/figures` by default; `--inline`
-embeds them as data URIs to produce one portable file.
+Charts are inline SVG rather than rendered images — see `charts.py` for why —
+so the page is entirely self-contained: no CDN, no external CSS, no
+JavaScript, no image files to ship alongside it.
 """
 
 from __future__ import annotations
 
-import base64
 import html
 import json
-import os
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+
+from averta.charts import (
+    MUTED,
+    SERIES_1,
+    SERIES_2,
+    Series,
+    bar_chart,
+    line_chart,
+    paired_charts,
+)
 
 PAPER = "https://arxiv.org/abs/2608.03222"
 DATASET = "https://huggingface.co/datasets/SWE-Gym/OpenHands-Sampled-Trajectories"
@@ -120,6 +128,23 @@ figure{margin:1.5rem 0}
 figure img{width:100%;border:1px solid var(--line);border-radius:var(--radius);display:block}
 figcaption{color:var(--muted);font-size:.83rem;margin-top:.6rem;max-width:46rem}
 
+/* Charts are inline SVG so they theme with the page, stay crisp at any zoom,
+   and need no JavaScript. Slots 1 and 2 of the validated categorical palette. */
+.viz{--s1:#2a78d6;--s2:#eb6834;margin:1.5rem 0}
+@media (prefers-color-scheme:dark){.viz{--s1:#3987e5;--s2:#d95926}}
+.chart{width:100%;height:auto;display:block;overflow:visible}
+.chart .tick{fill:var(--faint);font-size:11px;font-variant-numeric:tabular-nums}
+.chart .axis{fill:var(--muted);font-size:11px;letter-spacing:.03em}
+.chart .serieslabel{font-size:11.5px;font-weight:640}
+.chart .barlabel{fill:var(--ink);font-size:12px;font-family:ui-monospace,Menlo,monospace}
+.chart .barvalue{fill:var(--muted);font-size:11.5px;font-variant-numeric:tabular-nums}
+.chart circle{transition:r .12s ease}
+.chart circle:hover{r:6}
+.chart rect{transition:opacity .12s ease}
+.chart rect:hover{opacity:1}
+.pair{display:grid;gap:.5rem}
+@media (min-width:840px){.pair{grid-template-columns:1fr 1fr}}
+
 .note{color:var(--muted);font-size:.87rem;max-width:46rem}
 .flag{border-left:2px solid var(--line);padding-left:1rem;color:var(--muted);
   font-size:.9rem;margin:1.2rem 0;max-width:46rem}
@@ -161,21 +186,6 @@ SECTIONS = [
 
 def _e(text: Any) -> str:
     return html.escape(str(text))
-
-
-def _img(path: Path, caption: str, *, out_dir: Path, inline: bool) -> str:
-    """Render a figure, either inlined or linked."""
-    if not path.exists():
-        return ""
-    if inline:
-        encoded = base64.b64encode(path.read_bytes()).decode("ascii")
-        source = f"data:image/png;base64,{encoded}"
-    else:
-        source = os.path.relpath(path.resolve(), out_dir.resolve())
-    return (
-        f'<figure><img alt="{_e(caption)}" src="{_e(source)}" loading="lazy">'
-        f"<figcaption>{caption}</figcaption></figure>"
-    )
 
 
 def _table(
@@ -247,6 +257,136 @@ def _gate_table(gate: dict[str, Any]) -> str:
     return _table(["pre-registered criterion", "result"], rows, classes)
 
 
+def _auroc_chart(artifacts: Path) -> str:
+    """AUROC by cut point, built from the per-cut gate files."""
+    cuts, points, bands = [], [], []
+    for cut in (3, 5, 10, 20, 40):
+        payload = _load(artifacts / "phase3" / f"gate_cut{cut}.json")
+        if payload is None:
+            continue
+        best = max(
+            (r for r in payload["results"] if r["name"] not in BASELINES),
+            key=lambda r: r["auroc"],
+        )
+        cuts.append(cut)
+        points.append((cut, best["auroc"]))
+        bands.append((cut, best["auroc_ci_lower"], best["auroc_ci_upper"]))
+
+    if len(points) < 2:
+        return ""
+
+    chart = line_chart(
+        [
+            Series(
+                label="best model",
+                points=points,
+                band=bands,
+                color=SERIES_1,
+            ),
+            Series(
+                label="baselines",
+                points=[(c, 0.5) for c in cuts],
+                color=SERIES_2,
+                dashed=True,
+            ),
+        ],
+        x_ticks=[float(c) for c in cuts],
+        y_ticks=[0.45, 0.55, 0.65, 0.75],
+        x_label="cut point (turn index)",
+        y_label="AUROC",
+        title="AUROC by cut point",
+        x_categorical=True,
+    )
+    return (
+        '<figure class="viz">' + chart + "<figcaption>Shaded band is the 95% "
+        "interval, resampling repositories rather than rows. Cut points are "
+        "spaced evenly because they are ordered labels, not a continuous axis. "
+        "Each cut has a different population — only sessions that reached that "
+        "turn appear — so this is not one model tracked over time."
+        "</figcaption></figure>"
+    )
+
+
+def _calibration_chart(diag: dict[str, Any] | None) -> str:
+    """Reliability curve, raw against calibrated, with the ideal diagonal."""
+    if not diag or "calibration" not in diag:
+        return ""
+
+    cal = diag["calibration"]
+    raw, fixed = cal["raw"], cal["calibrated"]
+    if len(raw["predicted"]) < 2:
+        return ""
+
+    chart = line_chart(
+        [
+            Series(
+                label="ideal",
+                points=[(0.0, 0.0), (1.0, 1.0)],
+                color=MUTED,
+                dashed=True,
+            ),
+            Series(
+                label=f"raw ({cal['brier_raw']:.3f})",
+                points=list(zip(raw["predicted"], raw["observed"], strict=True)),
+                color=SERIES_2,
+                dashed=True,
+            ),
+            Series(
+                label=f"calibrated ({cal['brier_calibrated']:.3f})",
+                points=list(zip(fixed["predicted"], fixed["observed"], strict=True)),
+                color=SERIES_1,
+            ),
+        ],
+        x_ticks=[0.0, 0.25, 0.5, 0.75, 1.0],
+        y_ticks=[0.0, 0.25, 0.5, 0.75, 1.0],
+        x_label="predicted failure probability",
+        y_label="observed failure rate",
+        title="Calibration, before and after isotonic regression",
+        height=340,
+    )
+    return (
+        '<figure class="viz">' + chart + "<figcaption>Brier score in "
+        "parentheses. Both curves are shown deliberately — the raw one is the "
+        "instructive half, since it is what class weighting does to the output "
+        "scale. Showing only the corrected version would hide why the step "
+        "exists.</figcaption></figure>"
+    )
+
+
+def _savings_charts(savings: dict[str, Any]) -> str:
+    """Savings and harm as two panels sharing an x-axis.
+
+    Previously one plot with two y-scales. A dual axis invents a relationship:
+    where the two lines cross is an artefact of how the scales were aligned,
+    not something in the data — the exact misreading the caption was trying to
+    warn against. Two panels state the trade-off without implying one.
+    """
+    points = [p for p in savings["points"] if p["false_positive_rate"] <= 0.30]
+    if len(points) < 2:
+        return ""
+
+    points.sort(key=lambda p: p["false_positive_rate"])
+    fpr = [round(p["false_positive_rate"], 3) for p in points]
+
+    panels = paired_charts(
+        fpr,
+        [p["savings_rate"] * 100 for p in points],
+        [float(p["successes_terminated"]) for p in points],
+        left_label="tokens saved (%)",
+        right_label="successes killed",
+        x_label="false positive rate",
+        marker=(0.05, "5% budget"),
+    )
+    return (
+        f'<figure class="viz"><div class="pair">{panels}</div>'
+        "<figcaption>Two panels rather than two y-axes on one plot. The "
+        "quantities are not commensurable — one is tokens not spent, the other "
+        "is work destroyed — and overlaying them on shared axes would suggest a "
+        "crossing point that is purely an artefact of scaling."
+        "</figcaption></figure>"
+    )
+
+
 def _load(path: Path) -> dict[str, Any] | None:
     if not path.exists():
         return None
@@ -254,7 +394,7 @@ def _load(path: Path) -> dict[str, Any] | None:
         return json.load(handle)
 
 
-def build(artifacts: Path, out: Path, inline: bool = False) -> Path:
+def build(artifacts: Path, out: Path) -> Path:
     gate = _load(artifacts / "phase3" / "gate_cut10.json")
     if gate is None:
         raise FileNotFoundError(
@@ -265,10 +405,12 @@ def build(artifacts: Path, out: Path, inline: bool = False) -> Path:
     savings = _load(artifacts / "phase4" / "savings_cut10.json")
     corpus = _load(artifacts / "phase1" / "corpus_summary.json")
     drift = _load(artifacts / "phase6" / "drift_cut40.json")
-    figures = artifacts / "figures"
 
-    def fig(name: str, caption: str) -> str:
-        return _img(figures / name, caption, out_dir=out.parent, inline=inline)
+    def viz(svg: str, caption: str) -> str:
+        return (
+            f'<figure class="viz">{svg}'
+            f"<figcaption>{caption}</figcaption></figure>"
+        )
 
     best = next(r for r in gate["results"] if r["name"] == gate["gate"]["model"])
     logistic_cost = None
@@ -413,12 +555,7 @@ def build(artifacts: Path, out: Path, inline: bool = False) -> Path:
             '<p class="note">The shortfall is robust: it holds at every cut point '
             "tested and under any model-selection rule. The best recall at a 5% "
             "false-positive budget anywhere on the curve is 0.191.</p>",
-            fig(
-                "auroc_by_cut.png",
-                "AUROC against cut point. Each cut has a different population — only "
-                "sessions reaching that turn appear — so this is not one model tracked "
-                "over time. Bands are 95% intervals resampling repositories.",
-            ),
+            _auroc_chart(artifacts),
         )
     )
 
@@ -472,6 +609,18 @@ def build(artifacts: Path, out: Path, inline: bool = False) -> Path:
                 "drivers",
                 "What drives it",
                 "The expectation was wrong, and measurement is what corrected it.",
+                viz(
+                    bar_chart(
+                        [i["feature"] for i in diag["importance"][:10]],
+                        [i["drop"] for i in diag["importance"][:10]],
+                        title="Permutation importance",
+                        value_format="{:.3f}",
+                        highlight=0,
+                    ),
+                    "AUROC lost when each feature is shuffled within the held-out "
+                    "fold. One series, so one colour — the bar length already "
+                    "encodes magnitude.",
+                ),
                 _table(
                     ["feature", "AUROC drop when shuffled"], rows, [""] * len(rows)
                 ),
@@ -538,11 +687,7 @@ def build(artifacts: Path, out: Path, inline: bool = False) -> Path:
             "corrects it, moving the Brier score from 0.2323 to 0.0826. Fitting the "
             "calibrator on training predictions would have learned the model's own "
             "overconfidence and reported it back as calibrated.</p>",
-            fig(
-                "calibration.png",
-                "Both curves are shown deliberately. Showing only the corrected version "
-                "would hide why the calibration step exists.",
-            ),
+            _calibration_chart(diag),
         )
     )
 
@@ -585,10 +730,7 @@ def build(artifacts: Path, out: Path, inline: bool = False) -> Path:
                 "never netted off the savings — the two are not commensurable and a "
                 "single &ldquo;net&rdquo; figure would let the harm disappear into an "
                 "aggregate.</p>",
-                fig(
-                    "savings_tradeoff.png",
-                    "The two axes measure different things and are never summed.",
-                ),
+                _savings_charts(savings),
             )
         )
 

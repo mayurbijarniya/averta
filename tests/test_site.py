@@ -3,6 +3,7 @@
 import json
 import re
 from html.parser import HTMLParser
+from xml.etree import ElementTree
 
 import pytest
 
@@ -63,9 +64,75 @@ GATE = {
 
 @pytest.fixture
 def artifacts(tmp_path):
+    """The minimum the page needs: one gate file, nothing optional."""
     (tmp_path / "phase3").mkdir()
     (tmp_path / "phase3" / "gate_cut10.json").write_text(json.dumps(GATE))
     return tmp_path
+
+
+@pytest.fixture
+def full_artifacts(artifacts):
+    """Enough for every chart to render — the AUROC curve needs several cuts."""
+    for cut in (3, 5, 20, 40):
+        payload = json.loads(json.dumps(GATE))
+        payload["cut_point"] = cut
+        (artifacts / "phase3" / f"gate_cut{cut}.json").write_text(json.dumps(payload))
+
+    (artifacts / "phase4").mkdir()
+    (artifacts / "phase4" / "diagnostics_cut10.json").write_text(
+        json.dumps(
+            {
+                "importance": [
+                    {"feature": "distinct_action_ratio", "drop": 0.159},
+                    {"feature": "novelty_rate_recent", "drop": 0.153},
+                ],
+                "cost": [
+                    {
+                        "model": "logistic",
+                        "predict_single_ms_p50": 0.18,
+                        "predict_single_ms_p95": 0.19,
+                        "parameters_bytes": 2150,
+                    }
+                ],
+                "calibration": {
+                    "raw": {
+                        "predicted": [0.2, 0.5, 0.8],
+                        "observed": [0.7, 0.9, 0.95],
+                        "counts": [10, 20, 30],
+                    },
+                    "calibrated": {
+                        "predicted": [0.6, 0.8, 0.95],
+                        "observed": [0.6, 0.8, 0.94],
+                        "counts": [10, 20, 30],
+                    },
+                    "brier_raw": 0.232,
+                    "brier_calibrated": 0.083,
+                },
+            }
+        )
+    )
+    (artifacts / "phase4" / "savings_cut10.json").write_text(
+        json.dumps(
+            {
+                "points": [
+                    {
+                        "threshold": t,
+                        "recall": r,
+                        "false_positive_rate": f,
+                        "savings_rate": s,
+                        "successes_terminated": k,
+                    }
+                    for t, r, f, s, k in [
+                        (0.90, 0.05, 0.010, 0.024, 5),
+                        (0.80, 0.18, 0.047, 0.081, 23),
+                        (0.65, 0.28, 0.096, 0.159, 47),
+                        (0.55, 0.50, 0.246, 0.336, 121),
+                    ]
+                ]
+            }
+        )
+    )
+    return artifacts
 
 
 class TestBuild:
@@ -91,37 +158,32 @@ class TestBuild:
         assert "https://" not in text or "modelcontextprotocol" not in text
         assert "<script" not in text
 
-    def test_linked_figures_resolve_relative_to_the_page(self, artifacts, tmp_path):
-        figures = artifacts / "figures"
-        figures.mkdir()
-        (figures / "calibration.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+    def test_charts_are_inline_svg(self, full_artifacts, tmp_path):
+        # No raster figures: the page must carry its own charts so it themes
+        # with the surface and stays crisp at any zoom.
+        text = build(full_artifacts, tmp_path / "index.html").read_text()
+        assert "<svg" in text
+        assert "<img" not in text
+        assert "data:image" not in text
 
-        out = tmp_path / "site" / "index.html"
-        text = build(artifacts, out).read_text()
+    def test_every_chart_is_well_formed_xml(self, full_artifacts, tmp_path):
+        text = build(full_artifacts, tmp_path / "index.html").read_text()
+        charts = re.findall(r"<svg\b.*?</svg>", text, re.S)
+        assert charts
+        for chart in charts:
+            ElementTree.fromstring(chart)
 
-        sources = re.findall(r'src="([^"]+)"', text)
-        assert sources, "no figure was rendered"
-        for source in sources:
-            assert not source.startswith("data:")
-            assert (out.parent / source).resolve().exists()
+    def test_charts_theme_through_css_variables(self, full_artifacts, tmp_path):
+        # Hard-coded fills would not follow prefers-color-scheme.
+        text = build(full_artifacts, tmp_path / "index.html").read_text()
+        charts = "".join(re.findall(r"<svg\b.*?</svg>", text, re.S))
+        assert "var(--s1)" in charts or "var(--muted)" in charts
 
-    def test_inline_embeds_figures_as_data_uris(self, artifacts, tmp_path):
-        figures = artifacts / "figures"
-        figures.mkdir()
-        (figures / "calibration.png").write_bytes(b"\x89PNG\r\n\x1a\n")
-
-        text = build(artifacts, tmp_path / "index.html", inline=True).read_text()
-        assert "data:image/png;base64," in text
-        assert 'src="../' not in text
-
-    def test_inline_is_larger_than_linked(self, artifacts, tmp_path):
-        figures = artifacts / "figures"
-        figures.mkdir()
-        (figures / "calibration.png").write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 4096)
-
-        linked = build(artifacts, tmp_path / "a.html").stat().st_size
-        embedded = build(artifacts, tmp_path / "b.html", inline=True).stat().st_size
-        assert embedded > linked
+    def test_charts_have_accessible_labels(self, full_artifacts, tmp_path):
+        text = build(full_artifacts, tmp_path / "index.html").read_text()
+        for chart in re.findall(r"<svg\b[^>]*>", text):
+            assert 'role="img"' in chart
+            assert "aria-label=" in chart
 
     def test_reports_the_gate_failure(self, artifacts, tmp_path):
         text = build(artifacts, tmp_path / "index.html").read_text()

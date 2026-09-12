@@ -232,12 +232,24 @@ def diagnose(
     ]
     typer.echo(render_cost(profiles))
 
+    # Calibration bins are persisted so the results page can draw the
+    # reliability curve as themeable SVG instead of a baked-in raster.
+    predictions = out_of_fold_predictions(data, model)
+    calibrator = Calibrator().fit(predictions, data.y_fail)
+    adjusted = calibrator.apply(predictions)
+
     out.mkdir(parents=True, exist_ok=True)
     payload = {
         "cut_point": cut,
         "model": model,
         "importance": [vars(item) for item in importance],
         "cost": [vars(profile) for profile in profiles],
+        "calibration": {
+            "raw": calibration(data, predictions),
+            "calibrated": calibration(data, adjusted),
+            "brier_raw": brier_score(data.y_fail, predictions),
+            "brier_calibrated": brier_score(data.y_fail, adjusted),
+        },
     }
     with open(out / f"diagnostics_cut{cut}.json", "w") as fh:
         json.dump(payload, fh, indent=2, default=float)
@@ -320,15 +332,11 @@ def savings(
 def site(
     artifacts: Path = typer.Option(Path("artifacts")),
     out: Path = typer.Option(Path("site/index.html"), help="page to write"),
-    inline: bool = typer.Option(
-        False, "--inline", help="embed figures as data URIs for one portable file"
-    ),
 ) -> None:
     """Render a results page from the committed artifacts."""
-    path = build_site(artifacts, out, inline=inline)
+    path = build_site(artifacts, out)
     size = path.stat().st_size
-    mode = "self-contained" if inline else "figures linked from artifacts/"
-    typer.echo(f"wrote {path} ({size / 1024:.0f} KB, {mode}, no JS)")
+    typer.echo(f"wrote {path} ({size / 1024:.0f} KB, self-contained, no JS)")
     typer.echo(f"open it with: open {path}")
 
 
