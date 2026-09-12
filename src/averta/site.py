@@ -28,142 +28,143 @@ from averta.charts import (
     line_chart,
     paired_charts,
 )
+from averta.icons import SECTION_ICONS, icon
 
 PAPER = "https://arxiv.org/abs/2608.03222"
 DATASET = "https://huggingface.co/datasets/SWE-Gym/OpenHands-Sampled-Trajectories"
 
 STYLE = """
 :root {
-  --ink:#15171c; --muted:#5d6470; --faint:#878e9a; --line:#e4e7ec; --bg:#fff;
-  --panel:#f7f8fa; --accent:#2f7d4f; --warn:#b0342f; --radius:8px;
+  --ink:#0d0f13; --muted:#5b6371; --faint:#8b93a1; --line:#e6e8ec; --bg:#fff;
+  --panel:#f8f9fb; --accent:#2f7d4f; --warn:#b0342f; --r:9px;
+  --mono:ui-monospace,"Geist Mono","IBM Plex Mono",SFMono-Regular,Menlo,monospace;
 }
 @media (prefers-color-scheme:dark){:root{
-  --ink:#e9ebef; --muted:#9ba3b1; --faint:#767e8c; --line:#282d36; --bg:#131519;
-  --panel:#1a1d23; --accent:#6fbf8d; --warn:#e58a85;
+  --ink:#eceef2; --muted:#98a1b0; --faint:#6f7889; --line:#252a33; --bg:#0f1115;
+  --panel:#161a20; --accent:#6fbf8d; --warn:#e58a85;
 }}
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
 body{
-  margin:0; background:var(--bg); color:var(--ink);
-  font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,sans-serif;
-  -webkit-font-smoothing:antialiased;
+  margin:0;background:var(--bg);color:var(--ink);
+  font:15.5px/1.68 Inter,"Geist",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  -webkit-font-smoothing:antialiased;font-feature-settings:"cv02","cv03","cv04";
 }
-.wrap{max-width:64rem;margin:0 auto;padding:0 1.5rem 6rem}
 .skip{position:absolute;left:-9999px}
 .skip:focus{left:1rem;top:1rem;background:var(--accent);color:#fff;padding:.5rem 1rem;
-  border-radius:var(--radius);z-index:10}
+  border-radius:var(--r);z-index:20}
 
-header{padding:4rem 0 2rem}
-h1{font-size:2.4rem;margin:0 0 .4rem;letter-spacing:-.025em;font-weight:680}
-.tagline{font-size:1.1rem;color:var(--muted);margin:0 0 1.5rem}
-.question{
-  font-size:1.05rem;font-style:italic;color:var(--ink);border-left:3px solid var(--accent);
-  padding:.6rem 0 .6rem 1.1rem;margin:0 0 2rem;max-width:44rem;
+/* Sidebar + content. Collapses to a single column below 960px. */
+.shell{display:grid;grid-template-columns:1fr;max-width:78rem;margin:0 auto}
+@media (min-width:960px){
+  .shell{grid-template-columns:15rem 1fr;gap:3rem}
+  aside{position:sticky;top:0;height:100vh;overflow-y:auto;padding:2.5rem 0 2rem 1.5rem}
 }
-.badges{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:2rem}
-.badge{
-  font-size:.75rem;font-weight:600;letter-spacing:.03em;text-transform:uppercase;
-  padding:.3rem .7rem;border-radius:100px;border:1px solid var(--line);color:var(--muted);
-}
-.badge.warn{border-color:var(--warn);color:var(--warn)}
+aside{padding:1.5rem}
+.brand{display:flex;align-items:center;gap:.55rem;font-weight:660;letter-spacing:-.02em;
+  font-size:1.05rem;margin-bottom:.15rem}
+.brand .lucide{color:var(--accent)}
+.brandsub{color:var(--faint);font-size:.78rem;margin:0 0 1.5rem;line-height:1.45}
+nav ol{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:.15rem}
+@media (min-width:960px){nav ol{display:block}}
+nav a{display:flex;align-items:center;gap:.55rem;padding:.36rem .6rem;border-radius:7px;
+  color:var(--muted);text-decoration:none;font-size:.855rem;line-height:1.3}
+nav a:hover{background:var(--panel);color:var(--ink);text-decoration:none}
+nav a .lucide{color:var(--faint);flex:none}
+nav a:hover .lucide{color:var(--accent)}
 
-nav{
-  border-top:1px solid var(--line);border-bottom:1px solid var(--line);
-  padding:1rem 0;margin-bottom:1rem;
-}
-nav ol{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:.4rem 1.4rem;
-  counter-reset:s;font-size:.88rem}
-nav li{counter-increment:s}
-nav li::before{content:counter(s) ". ";color:var(--faint)}
-nav a{color:var(--muted);text-decoration:none;border-bottom:1px solid transparent}
-nav a:hover{color:var(--accent);border-bottom-color:var(--accent)}
+main{padding:0 1.5rem 6rem;min-width:0}
+@media (min-width:960px){main{padding:2.5rem 2rem 6rem 0}}
 
-section{padding-top:2.5rem}
-h2{font-size:1.35rem;margin:0 0 .3rem;letter-spacing:-.015em;font-weight:660;
-  scroll-margin-top:1rem}
-.sub{color:var(--muted);font-size:.92rem;margin:0 0 1.2rem}
-h3{font-size:.8rem;margin:2rem 0 .6rem;color:var(--faint);text-transform:uppercase;
-  letter-spacing:.08em;font-weight:700}
-p{margin:0 0 1rem;max-width:46rem}
-ul{max-width:46rem;padding-left:1.2rem}
-li{margin-bottom:.4rem}
+header{padding:1rem 0 .5rem}
+h1{font-size:2.15rem;margin:0 0 .35rem;letter-spacing:-.03em;font-weight:680}
+.tagline{font-size:1.02rem;color:var(--muted);margin:0 0 1.4rem;max-width:44rem}
+.question{font-size:1rem;color:var(--ink);border-left:2px solid var(--accent);
+  padding:.15rem 0 .15rem 1rem;margin:0 0 1.6rem;max-width:44rem}
+.badges{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.5rem}
+.badge{display:inline-flex;align-items:center;gap:.35rem;font-size:.735rem;font-weight:560;
+  padding:.25rem .6rem;border-radius:6px;border:1px solid var(--line);color:var(--muted);
+  background:var(--panel)}
+.badge.warn{border-color:color-mix(in srgb,var(--warn) 40%,var(--line));color:var(--warn);
+  background:color-mix(in srgb,var(--warn) 7%,transparent)}
 
-.verdict{
-  background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--warn);
-  padding:1.2rem 1.4rem;margin:0 0 2rem;border-radius:0 var(--radius) var(--radius) 0;
-}
-.verdict h3{margin-top:0;color:var(--warn)}
+section{padding-top:2.75rem;scroll-margin-top:1rem}
+h2{display:flex;align-items:center;gap:.55rem;font-size:1.22rem;margin:0 0 .25rem;
+  letter-spacing:-.02em;font-weight:640}
+h2 .lucide{color:var(--faint);flex:none}
+.sub{color:var(--muted);font-size:.9rem;margin:0 0 1.1rem;max-width:46rem}
+h3{font-size:.755rem;margin:1.9rem 0 .55rem;color:var(--faint);text-transform:uppercase;
+  letter-spacing:.09em;font-weight:680}
+p{margin:0 0 .95rem;max-width:46rem}
+ul{max-width:46rem;padding-left:1.15rem}
+li{margin-bottom:.35rem}
+
+.verdict{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+  padding:1.05rem 1.2rem;margin:0 0 1.6rem;max-width:46rem}
+.verdict h3{margin-top:0;color:var(--warn);display:flex;align-items:center;gap:.4rem}
 .verdict p:last-child{margin-bottom:0}
 
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(9rem,1fr));gap:1px;
-  background:var(--line);border:1px solid var(--line);border-radius:var(--radius);
-  overflow:hidden;margin:1.5rem 0}
-.stat{background:var(--bg);padding:1rem 1.1rem}
-.stat .v{font-size:1.5rem;font-weight:660;letter-spacing:-.02em;
-  font-variant-numeric:tabular-nums;display:block}
-.stat .k{font-size:.76rem;color:var(--muted);text-transform:uppercase;
-  letter-spacing:.05em;margin-top:.15rem;display:block}
+/* Metrics read as a row of numbers, not a wall of cards. */
+.grid{display:flex;flex-wrap:wrap;gap:2.4rem;margin:1.4rem 0 1.8rem;
+  padding:1.1rem 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.stat .v{font-size:1.42rem;font-weight:640;letter-spacing:-.025em;
+  font-variant-numeric:tabular-nums;display:block;line-height:1.25}
+.stat .k{font-size:.735rem;color:var(--faint);text-transform:uppercase;
+  letter-spacing:.07em;margin-top:.12rem;display:block}
 
-.scroll{overflow-x:auto;margin:1rem 0 1.5rem;-webkit-overflow-scrolling:touch}
-table{width:100%;border-collapse:collapse;font-size:.88rem;min-width:32rem}
-caption{text-align:left;color:var(--muted);font-size:.85rem;padding-bottom:.6rem}
-th,td{text-align:right;padding:.55rem .7rem;border-bottom:1px solid var(--line);
+.scroll{overflow-x:auto;margin:.9rem 0 1.4rem}
+table{width:100%;border-collapse:collapse;font-size:.865rem;min-width:31rem}
+caption{text-align:left;color:var(--faint);font-size:.82rem;padding-bottom:.55rem}
+th,td{text-align:right;padding:.5rem .7rem;border-bottom:1px solid var(--line);
   font-variant-numeric:tabular-nums;white-space:nowrap}
 th:first-child,td:first-child{text-align:left}
-thead th{color:var(--muted);font-weight:650;font-size:.74rem;text-transform:uppercase;
-  letter-spacing:.05em;border-bottom-width:1.5px}
-tbody tr.pick td{background:var(--panel);font-weight:640}
+thead th{color:var(--faint);font-weight:620;font-size:.715rem;text-transform:uppercase;
+  letter-spacing:.06em}
+tbody tr:hover td{background:var(--panel)}
+tbody tr.pick td{background:var(--panel);font-weight:620}
 tbody tr.base td{color:var(--faint)}
-tbody tr.fail td{background:color-mix(in srgb,var(--warn) 8%,transparent)}
-td.pass{color:var(--accent);font-weight:600}
-td.no{color:var(--warn);font-weight:700}
+td .lucide{vertical-align:-3px;margin-right:.25rem}
+.ok{color:var(--accent);font-weight:600;white-space:nowrap}
+.no{color:var(--warn);font-weight:680;white-space:nowrap}
 
-code{background:var(--panel);padding:.12em .42em;border-radius:4px;font-size:.87em;
-  font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
-pre{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
-  padding:1rem 1.1rem;overflow-x:auto;font-size:.84rem;line-height:1.55;margin:1rem 0 1.5rem}
-pre code{background:none;padding:0}
+code{font-family:var(--mono);background:var(--panel);padding:.1em .38em;
+  border-radius:5px;font-size:.86em}
+pre{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+  padding:.95rem 1.05rem;overflow-x:auto;font-size:.825rem;line-height:1.6;
+  margin:.9rem 0 1.4rem;font-family:var(--mono);max-width:46rem}
+pre code{background:none;padding:0;font-size:1em}
 
-figure{margin:1.5rem 0}
-figure img{width:100%;border:1px solid var(--line);border-radius:var(--radius);display:block}
-figcaption{color:var(--muted);font-size:.83rem;margin-top:.6rem;max-width:46rem}
+figure{margin:1.3rem 0}
+figcaption{color:var(--faint);font-size:.815rem;margin-top:.5rem;max-width:46rem;line-height:1.55}
 
-/* Charts are inline SVG so they theme with the page, stay crisp at any zoom,
-   and need no JavaScript. Slots 1 and 2 of the validated categorical palette. */
-.viz{--s1:#2a78d6;--s2:#eb6834;margin:1.5rem 0}
+.viz{--s1:#2a78d6;--s2:#eb6834}
 @media (prefers-color-scheme:dark){.viz{--s1:#3987e5;--s2:#d95926}}
 .chart{width:100%;height:auto;display:block;overflow:visible}
 .chart .tick{fill:var(--faint);font-size:11px;font-variant-numeric:tabular-nums}
 .chart .axis{fill:var(--muted);font-size:11px;letter-spacing:.03em}
-.chart .serieslabel{font-size:11.5px;font-weight:640}
-.chart .barlabel{fill:var(--ink);font-size:12px;font-family:ui-monospace,Menlo,monospace}
+.chart .serieslabel{font-size:11.5px;font-weight:620}
+.chart .barlabel{fill:var(--ink);font-size:11.5px;font-family:var(--mono)}
 .chart .barvalue{fill:var(--muted);font-size:11.5px;font-variant-numeric:tabular-nums}
 .chart circle{transition:r .12s ease}
 .chart circle:hover{r:6}
 .chart rect{transition:opacity .12s ease}
 .chart rect:hover{opacity:1}
-.pair{display:grid;gap:.5rem}
-@media (min-width:840px){.pair{grid-template-columns:1fr 1fr}}
+.pair{display:grid;gap:.4rem}
+@media (min-width:900px){.pair{grid-template-columns:1fr 1fr}}
 
-.note{color:var(--muted);font-size:.87rem;max-width:46rem}
-.flag{border-left:2px solid var(--line);padding-left:1rem;color:var(--muted);
-  font-size:.9rem;margin:1.2rem 0;max-width:46rem}
+.note{color:var(--faint);font-size:.855rem;max-width:46rem}
+.flag{display:flex;gap:.6rem;border-left:2px solid var(--line);padding:.1rem 0 .1rem .9rem;
+  color:var(--muted);font-size:.885rem;margin:1.1rem 0;max-width:46rem}
+.flag .lucide{color:var(--faint);flex:none;margin-top:.2rem}
 
-footer{margin-top:5rem;padding-top:1.5rem;border-top:1px solid var(--line);
-  color:var(--muted);font-size:.85rem}
+footer{margin-top:4rem;padding-top:1.3rem;border-top:1px solid var(--line);
+  color:var(--faint);font-size:.83rem}
 a{color:var(--accent)}
 a:hover{text-decoration:underline}
+.lucide{flex:none}
 
-@media (max-width:640px){
-  header{padding-top:2.5rem}
-  h1{font-size:1.9rem}
-  nav ol{gap:.3rem 1rem;font-size:.82rem}
-}
-@media print{
-  nav,.badges{display:none}
-  body{font-size:11pt}
-  section{page-break-inside:avoid}
-}
+@media (max-width:640px){h1{font-size:1.75rem}.grid{gap:1.5rem}}
+@media print{aside,.badges{display:none}body{font-size:10.5pt}section{page-break-inside:avoid}}
 """
 
 BASELINES = {"majority", "turn_index_only", "error_repeat_only"}
@@ -214,8 +215,9 @@ def _stats(items: list[tuple[str, str]]) -> str:
 
 def _section(anchor: str, title: str, sub: str, *body: str) -> str:
     subtitle = f'<p class="sub">{sub}</p>' if sub else ""
+    glyph = icon(SECTION_ICONS.get(anchor, ""), 18)
     return (
-        f'<section id="{anchor}"><h2>{title}</h2>{subtitle}'
+        f'<section id="{anchor}"><h2>{glyph}{title}</h2>{subtitle}'
         + "".join(part for part in body if part)
         + "</section>"
     )
@@ -251,8 +253,14 @@ def _model_table(gate: dict[str, Any]) -> str:
 def _gate_table(gate: dict[str, Any]) -> str:
     rows, classes = [], []
     for label, ok in gate["gate"]["checks"].items():
-        cell = '<td class="pass">pass</td>' if ok else '<td class="no">NOT MET</td>'
-        rows.append([_e(label), cell.replace("<td", "<span").replace("</td>", "</span>")])
+        # Icon + word + colour. Colour alone would fail a reader with a
+        # colour-vision deficiency, and this table carries the verdict.
+        mark = (
+            f'<span class="ok">{icon("check", 15)}pass</span>'
+            if ok
+            else f'<span class="no">{icon("cross", 15)}NOT MET</span>'
+        )
+        rows.append([_e(label), mark])
         classes.append("" if ok else "fail")
     return _table(["pre-registered criterion", "result"], rows, classes)
 
@@ -428,18 +436,20 @@ def build(artifacts: Path, out: Path) -> Path:
     NAV_SLOT = "<!--NAV-->"
     parts.append(
         '<a class="skip" href="#question">Skip to content</a>'
-        '<div class="wrap"><header>'
+        '<div class="shell">'
+        f"<aside>{NAV_SLOT}</aside>"
+        "<main><header>"
         "<h1>Averta</h1>"
         '<p class="tagline">CPU-native failure prediction for AI coding agents</p>'
         '<p class="question">Can a lightweight, CPU-native model predict when a '
         "coding agent is heading toward failure early enough to save tokens — "
         "without killing sessions that would have recovered?</p>"
         '<div class="badges">'
-        '<span class="badge warn">Pre-registered gate: not met</span>'
-        '<span class="badge">Two disclosed attempts</span>'
-        '<span class="badge">266 tests</span>'
-        '<span class="badge">MIT licensed</span>'
-        "</div></header>" + NAV_SLOT
+        f'<span class="badge warn">{icon("cross", 14)}Gate not met</span>'
+        f'<span class="badge">{icon("branch", 14)}Two disclosed attempts</span>'
+        f'<span class="badge">{icon("check", 14)}269 tests</span>'
+        f'<span class="badge">{icon("cpu", 14)}2.1 KB · 0.18 ms</span>'
+        "</div></header>"
     )
 
     # ---- the question -----------------------------------------------------
@@ -500,7 +510,7 @@ def build(artifacts: Path, out: Path) -> Path:
                 "sessions average 39.86 turns against 39.23 for unresolved. Prior work "
                 "describes failing agent runs as tending to run longer; that does not "
                 "reproduce here.</p>"
-                '<p class="flag">The source carries no declared license, so this '
+                '<p class="flag">{FLAG_ICON}The source carries no declared license, so this '
                 "project does not redistribute it. Raw trajectories are downloaded "
                 "locally and excluded from version control; only derived statistics, "
                 "figures and model artifacts are published.</p>",
@@ -591,7 +601,7 @@ def build(artifacts: Path, out: Path) -> Path:
             "<p><code>n_repeated_calls</code> collapsed once ordering was represented "
             "properly — it had been a proxy for structure it could not express. The two "
             "strongest features now both measure <strong>declining action novelty</strong>.</p>"
-            '<p class="flag">Modelling stopped after two attempts. The gains were real '
+            '<p class="flag">{FLAG_ICON}Modelling stopped after two attempts. The gains were real '
             "but shrinking, the mechanism is understood, and a third round of feature "
             "invention against a bar that had already failed twice would be "
             "threshold-shopping under another name.</p>",
@@ -724,7 +734,7 @@ def build(artifacts: Path, out: Path) -> Path:
                 "reaches <strong>8.1% estimated token savings</strong> where the 0.6B "
                 "neural monitor reports 14.6&ndash;20.4%. Roughly half the value, at a "
                 "fraction of the size.</p>"
-                '<p class="flag">Tokens are <strong>estimated</strong> from content '
+                '<p class="flag">{FLAG_ICON}Tokens are <strong>estimated</strong> from content '
                 "length; the corpus records no token counts. Savings count only what "
                 "would have been spent after the cut. Sessions wrongly terminated are "
                 "never netted off the savings — the two are not commensurable and a "
@@ -771,7 +781,7 @@ def build(artifacts: Path, out: Path) -> Path:
                 "same unit across scaffolds. Cross-scaffold accuracy is therefore "
                 "<strong>unmeasured</strong>, and the tool labels its output indicative "
                 "in every code path.</p>"
-                '<p class="flag">This check caught a real bug. Two features reported '
+                '<p class="flag">{FLAG_ICON}This check caught a real bug. Two features reported '
                 "exactly 0.00 on sessions full of edits, because edit detection was keyed "
                 "to one tool vocabulary. Not a slightly worse score — a confident zero "
                 "for something that happened dozens of times.</p>",
@@ -840,18 +850,30 @@ def build(artifacts: Path, out: Path) -> Path:
         "pipeline, so it cannot drift out of sync with the results.</p>"
         f'<p>Reproduces <a href="{PAPER}">arXiv:2608.03222</a>. MIT licensed; the '
         "training corpus is not redistributed.</p>"
-        "</footer></div>"
+        "</footer></main></div>"
     )
 
     body = "".join(parts)
+    # Callout glyph, substituted once rather than threaded through every string.
+    body = body.replace("{FLAG_ICON}", icon("alert", 16))
 
     present = [
         (anchor, title)
         for anchor, title in SECTIONS
         if f'<section id="{anchor}"' in body
     ]
-    nav_items = "".join(f'<li><a href="#{a}">{t}</a></li>' for a, t in present)
-    body = body.replace(NAV_SLOT, f"<nav aria-label=Contents><ol>{nav_items}</ol></nav>")
+    nav_items = "".join(
+        f'<li><a href="#{a}">{icon(SECTION_ICONS.get(a, ""), 15)}{t}</a></li>'
+        for a, t in present
+    )
+    brand = (
+        f'<div class="brand">{icon("flask", 19)}Averta</div>'
+        '<p class="brandsub">CPU-native failure prediction<br>for AI coding agents</p>'
+    )
+    body = body.replace(
+        NAV_SLOT,
+        f"{brand}<nav aria-label=Contents><ol>{nav_items}</ol></nav>",
+    )
 
     document = (
         "<!doctype html><html lang=en><head><meta charset=utf-8>"

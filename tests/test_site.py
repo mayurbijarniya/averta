@@ -181,9 +181,33 @@ class TestBuild:
 
     def test_charts_have_accessible_labels(self, full_artifacts, tmp_path):
         text = build(full_artifacts, tmp_path / "index.html").read_text()
-        for chart in re.findall(r"<svg\b[^>]*>", text):
+        charts = [s for s in re.findall(r"<svg\b[^>]*>", text) if 'class="chart"' in s]
+        assert charts
+        for chart in charts:
             assert 'role="img"' in chart
             assert "aria-label=" in chart
+
+    def test_icons_are_hidden_from_assistive_tech(self, full_artifacts, tmp_path):
+        # Icons are decorative — every one sits beside a text label, so
+        # announcing them would just add noise for a screen reader.
+        text = build(full_artifacts, tmp_path / "index.html").read_text()
+        icons = [s for s in re.findall(r"<svg\b[^>]*>", text) if "lucide" in s]
+        assert icons
+        for glyph in icons:
+            assert 'aria-hidden="true"' in glyph
+            assert 'role="img"' not in glyph
+
+    def test_icons_inherit_colour(self, full_artifacts, tmp_path):
+        # A hard-coded stroke would not follow the theme or the parent's state.
+        text = build(full_artifacts, tmp_path / "index.html").read_text()
+        for glyph in re.findall(r'<svg[^>]*class="lucide[^>]*>', text):
+            assert 'stroke="currentColor"' in glyph
+
+    def test_gate_result_is_not_colour_alone(self, artifacts, tmp_path):
+        # The verdict must survive a colour-vision deficiency: icon + word.
+        text = build(artifacts, tmp_path / "index.html").read_text()
+        assert "NOT MET" in text
+        assert ">pass<" in text
 
     def test_reports_the_gate_failure(self, artifacts, tmp_path):
         text = build(artifacts, tmp_path / "index.html").read_text()
