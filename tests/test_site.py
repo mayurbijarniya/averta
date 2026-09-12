@@ -157,7 +157,9 @@ class TestBuild:
         # version of this test was vacuous and asserted nothing.
         text = build(artifacts, tmp_path / "index.html").read_text()
         assert "<script" not in text
-        assert "<link" not in text
+        # A <link> is allowed only if it carries its payload inline.
+        for tag in re.findall(r"<link\b[^>]*>", text):
+            assert "data:" in tag, f"fetches an external resource: {tag}"
         for tag in re.findall(r"<(?:img|iframe|source|embed)\b[^>]*>", text):
             assert "http" not in tag, f"fetches an external resource: {tag}"
         assert not re.search(r'@import|url\(\s*["\']?http', text)
@@ -255,7 +257,10 @@ class TestBuild:
         text = build(full_artifacts, tmp_path / "index.html").read_text()
         assert "<svg" in text
         assert "<img" not in text
-        assert "data:image" not in text
+        # The favicon is a data URI, but it is vector. What must never appear
+        # is an embedded raster, which would not theme and would blur on zoom.
+        for uri in re.findall(r"data:image/([\w.+-]+)", text):
+            assert uri == "svg+xml", f"embedded raster: {uri}"
 
     def test_every_chart_is_well_formed_xml(self, full_artifacts, tmp_path):
         text = build(full_artifacts, tmp_path / "index.html").read_text()
@@ -380,3 +385,31 @@ class TestSavingsSection:
         text = build(artifacts, tmp_path / "index.html").read_text()
         assert "estimated" in text.lower()
         assert "never netted off" in text
+
+
+class TestBrand:
+    def test_favicon_is_inline(self, artifacts, tmp_path):
+        text = build(artifacts, tmp_path / "index.html").read_text()
+        assert re.search(r'<link rel=icon href="data:image/svg\+xml,', text)
+
+    def test_favicon_svg_parses_and_is_opaque(self):
+        from averta.brand import favicon_svg
+
+        root = ElementTree.fromstring(favicon_svg())
+        assert root.get("viewBox") == "0 0 32 32"
+        # Browser chrome is any colour, so the tile must supply its own.
+        rect = root.find("{http://www.w3.org/2000/svg}rect")
+        assert rect is not None and rect.get("fill").startswith("#")
+
+    def test_inline_mark_inherits_text_colour(self):
+        from averta.brand import mark
+
+        svg = mark(19)
+        assert 'stroke="currentColor"' in svg
+        assert 'width="19"' in svg
+        assert "#" not in svg, "the inline mark must not hard-code a colour"
+
+    def test_mark_is_used_for_the_brand_not_a_stock_icon(self, artifacts, tmp_path):
+        text = build(artifacts, tmp_path / "index.html").read_text()
+        brand = re.search(r'<div class="brand">(.*?)</div>', text, re.S).group(1)
+        assert "M3 12h7" in brand

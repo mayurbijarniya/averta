@@ -19,6 +19,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from averta.brand import favicon_data_uri, mark
 from averta.charts import (
     MUTED,
     SERIES_1,
@@ -210,11 +211,14 @@ figcaption{color:var(--faint);font-size:.815rem;margin-top:.5rem;max-width:54rem
    A recruiter gives this a few seconds. The headline numbers therefore sit
    above the fold at display size, before any prose. */
 .hero{padding:2.2rem 0 .5rem}
+/* Neutral, not warn-red. This chip states the method, which is the strongest
+   thing about the project; in red at the top of the page it read as an error
+   banner before the reader had any context to interpret it. */
 .eyebrow{display:inline-flex;align-items:center;gap:.4rem;font-size:.72rem;
-  font-weight:640;letter-spacing:.09em;text-transform:uppercase;color:var(--warn);
-  background:color-mix(in srgb,var(--warn) 9%,transparent);
-  border:1px solid color-mix(in srgb,var(--warn) 30%,var(--line));
+  font-weight:640;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);
+  background:var(--panel);border:1px solid var(--line);
   padding:.28rem .65rem;border-radius:100px;margin-bottom:1.1rem}
+.eyebrow .lucide{color:var(--faint)}
 h1{font-size:clamp(2.3rem,4.4vw,3.1rem);margin:0 0 .5rem;letter-spacing:-.035em;
   font-weight:700;line-height:1.08}
 .tagline{font-size:clamp(1.02rem,1.5vw,1.18rem);color:var(--muted);margin:0 0 1.9rem;
@@ -621,7 +625,7 @@ def build(artifacts: Path, out: Path) -> Path:
         '<a class="skip" href="#question">Skip to content</a>'
         '<div class="topbar">'
         f'<a class="burger" href="#menu">{icon("menu", 16)}Contents</a>'
-        f'<span class="topbrand">{icon("flask", 16)}Averta</span>'
+        f'<span class="topbrand">{mark(16)}Averta</span>'
         "</div>"
         '<div class="shell">'
         f'<aside id="menu"><a class="closer" href="#" aria-label="Close">'
@@ -1070,7 +1074,7 @@ def build(artifacts: Path, out: Path) -> Path:
         for a, t in present
     )
     brand = (
-        f'<div class="brand">{icon("flask", 19)}Averta</div>'
+        f'<div class="brand">{mark(19)}Averta</div>'
         '<p class="brandsub">CPU-native failure prediction<br>for AI coding agents</p>'
         '<div class="sidestat">'
         "<div><b>5,976</b>sessions</div>"
@@ -1097,6 +1101,7 @@ def build(artifacts: Path, out: Path) -> Path:
         '<meta name=description content="CPU-native failure prediction for AI coding '
         'agents: a pre-registered evaluation with a negative result.">'
         "<title>Averta, CPU-native failure prediction for AI coding agents</title>"
+        f'<link rel=icon href="{favicon_data_uri()}">'
         f"<style>{STYLE}</style></head><body>"
         f"{body}"
         "</body></html>"
