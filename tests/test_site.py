@@ -168,6 +168,37 @@ class TestBuild:
         assert "github.com" in text
         assert "MODEL_CARD" in text
 
+    def test_outbound_links_open_in_a_new_tab(self, artifacts, tmp_path):
+        text = build(artifacts, tmp_path / "index.html").read_text()
+        external = re.findall(r'<a\b[^>]*href="https?://[^"]+"[^>]*>', text)
+        assert external
+        for tag in external:
+            assert 'target="_blank"' in tag, tag
+            # target=_blank without noopener hands window.opener to the
+            # destination, which is a real security footgun.
+            assert 'rel="noopener noreferrer"' in tag, tag
+
+    def test_in_page_anchors_do_not_open_a_new_tab(self, artifacts, tmp_path):
+        text = build(artifacts, tmp_path / "index.html").read_text()
+        for tag in re.findall(r'<a\b[^>]*href="#[^"]*"[^>]*>', text):
+            assert "target=" not in tag, tag
+
+    def test_no_duplicated_call_to_action(self, artifacts, tmp_path):
+        # Two identical "View source" controls was noise; the sidebar carries
+        # the repository handle instead.
+        text = build(artifacts, tmp_path / "index.html").read_text()
+        assert text.count(">View source") == 1
+
+    def test_responsive_breakpoints_are_defined(self, artifacts, tmp_path):
+        # Phone, tablet and laptop are handled explicitly rather than left to
+        # a single grid that degrades.
+        text = build(artifacts, tmp_path / "index.html").read_text()
+        assert "max-width:380px" in text
+        assert "max-width:700px" in text
+        assert "max-width:959px" in text
+        assert "min-width:960px" in text
+        assert "width=device-width" in text
+
     def test_no_hard_coded_test_count(self, artifacts, tmp_path):
         # A count baked into the page goes stale the moment a test is added,
         # and did: the hero claimed 269 while the suite was at 272.

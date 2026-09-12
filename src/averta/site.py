@@ -59,14 +59,38 @@ body{
 .skip:focus{left:1rem;top:1rem;background:var(--link);color:#fff;padding:.5rem 1rem;
   border-radius:var(--r);z-index:20}
 
-/* Sidebar + content. Collapses to a single column below 960px. */
+/* ---- layout -------------------------------------------------------------
+   Three shapes, not one grid that degrades:
+   · phone  — brand row, nav as a horizontally scrolling strip pinned to top
+   · tablet — same, with roomier type
+   · laptop — a true sticky sidebar beside the content                        */
 .shell{display:grid;grid-template-columns:1fr;max-width:88rem;margin:0 auto}
+aside{padding:1rem 1.1rem;border-bottom:1px solid var(--line);background:var(--panel);
+  position:sticky;top:0;z-index:10}
+
+/* Phone and tablet: the nav scrolls sideways instead of stacking twelve rows
+   of links above the content a reader came for. */
+@media (max-width:959px){
+  .sidestat{display:none}
+  .repo{display:none}
+  aside{padding:.75rem 1rem .6rem}
+  .brand{font-size:.98rem;margin-bottom:.1rem}
+  .brandsub{display:none}
+  nav{margin:0 -1rem;overflow-x:auto;overscroll-behavior-x:contain;
+    -webkit-overflow-scrolling:touch;scrollbar-width:none}
+  nav::-webkit-scrollbar{display:none}
+  nav ol{flex-wrap:nowrap;gap:.3rem;padding:.5rem 1rem 0;width:max-content}
+  nav a{white-space:nowrap;background:var(--raised);
+    box-shadow:0 0 0 1px var(--line);padding:.35rem .7rem;font-size:.8rem}
+  nav a .lucide{display:none}
+}
+
 @media (min-width:960px){
   .shell{grid-template-columns:16rem minmax(0,1fr);gap:4rem}
-  aside{position:sticky;top:0;height:100vh;overflow-y:auto;padding:2.5rem 0 2rem 1.5rem}
+  aside{position:sticky;top:0;height:100vh;overflow-y:auto;
+    padding:2.5rem 1.4rem 2rem 1.5rem;border-bottom:none;
+    border-right:1px solid var(--line)}
 }
-aside{padding:1.5rem;border-right:1px solid var(--line);background:var(--panel)}
-@media (max-width:959px){aside{border-right:none;border-bottom:1px solid var(--line)}}
 .brand{display:flex;align-items:center;gap:.55rem;font-weight:660;letter-spacing:-.02em;
   font-size:1.05rem;margin-bottom:.15rem}
 .brand .lucide{color:var(--link)}
@@ -78,15 +102,17 @@ aside{padding:1.5rem;border-right:1px solid var(--line);background:var(--panel)}
   font-variant-numeric:tabular-nums}
 nav ol{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:.15rem}
 @media (min-width:960px){nav ol{display:block}}
-nav{margin-bottom:.4rem}
-nav a{display:flex;align-items:center;gap:.6rem;padding:.4rem .65rem;border-radius:7px;
-  color:var(--muted);text-decoration:none;font-size:.85rem;line-height:1.3;
-  border-left:2px solid transparent;transition:color .12s ease,background .12s ease}
+nav{margin-bottom:1rem}
+/* A soft filled pill rather than a coloured left rail: the rail is the
+   generic pattern and reads as decoration, while a fill reads as a surface
+   the item actually occupies. Weight and ink carry the state, not hue. */
+nav a{display:flex;align-items:center;gap:.62rem;padding:.42rem .6rem;
+  border-radius:7px;color:var(--muted);text-decoration:none;font-size:.855rem;
+  line-height:1.3;transition:background .13s ease,color .13s ease}
 nav a:hover{background:var(--raised);color:var(--ink);text-decoration:none;
-  border-left-color:var(--link)}
-nav a .lucide{color:var(--faint);flex:none}
-nav a:hover .lucide{color:var(--link)}
-/* :target highlights whichever section the reader jumped to. */
+  box-shadow:0 0 0 1px var(--line)}
+nav a .lucide{color:var(--faint);flex:none;transition:color .13s ease}
+nav a:hover .lucide{color:var(--ink)}
 section:target{scroll-margin-top:1rem}
 
 main{padding:0 1.5rem 6rem;min-width:0}
@@ -129,7 +155,7 @@ li{margin-bottom:.35rem}
   letter-spacing:.07em;margin-top:.12rem;display:block}
 
 .scroll{overflow-x:auto;margin:.9rem 0 1.4rem}
-table{width:100%;border-collapse:collapse;font-size:.865rem;min-width:31rem}
+table{width:100%;border-collapse:collapse;font-size:.865rem;min-width:29rem}
 caption{text-align:left;color:var(--faint);font-size:.82rem;padding-bottom:.55rem}
 th,td{text-align:right;padding:.5rem .7rem;border-bottom:1px solid var(--line);
   font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -211,10 +237,12 @@ h1{font-size:clamp(2.3rem,4.4vw,3.1rem);margin:0 0 .5rem;letter-spacing:-.035em;
 .links{display:flex;flex-wrap:wrap;gap:.3rem 1.4rem;margin:.2rem 0 0;font-size:.875rem}
 .links a{display:inline-flex;align-items:center;gap:.4rem;text-decoration:none}
 .links a:hover{text-decoration:underline}
-.out{display:flex;align-items:center;gap:.5rem;margin-top:1.2rem;padding:.4rem .6rem;
-  border-radius:7px;font-size:.855rem;color:var(--muted);text-decoration:none;
-  border:1px solid var(--line)}
-.out:hover{color:var(--link);border-color:var(--link);text-decoration:none}
+.repo{display:flex;align-items:center;gap:.5rem;padding-top:.9rem;
+  border-top:1px solid var(--line);font-size:.8rem;color:var(--faint);
+  text-decoration:none;font-family:var(--mono)}
+.repo b{color:var(--muted);font-weight:600}
+.repo:hover{color:var(--link);text-decoration:none}
+.repo:hover b{color:var(--link)}
 .note{color:var(--faint);font-size:.855rem;max-width:54rem}
 .flag{display:flex;gap:.6rem;border-left:2px solid var(--line);padding:.1rem 0 .1rem .9rem;
   color:var(--muted);font-size:.885rem;margin:1.1rem 0;max-width:54rem}
@@ -226,7 +254,29 @@ a{color:var(--link)}
 a:hover{text-decoration:underline}
 .lucide{flex:none}
 
-@media (max-width:640px){h1{font-size:1.75rem}.grid{gap:1.5rem}}
+@media (max-width:700px){
+  main{padding:0 1.1rem 4rem}
+  .hero{padding:1.5rem 0 .25rem}
+  h1{font-size:2.05rem}
+  .tagline{font-size:1rem;margin-bottom:1.4rem}
+  /* Two columns rather than four, so each number keeps its size. */
+  .kpis{grid-template-columns:1fr 1fr}
+  .kpi{padding:.85rem .9rem}
+  .kpi .n{font-size:1.45rem}
+  .cta{gap:.45rem}
+  .btn{flex:1 1 auto;justify-content:center;font-size:.85rem;padding:.55rem .7rem}
+  .grid{gap:1.35rem;padding:.9rem 0}
+  .pitch{font-size:.97rem}
+  section{padding-top:2.1rem}
+  h2{font-size:1.12rem}
+  /* Tables get an inset shadow hint that they scroll. */
+  .scroll{margin-inline:-1.1rem;padding-inline:1.1rem}
+  pre{font-size:.78rem}
+}
+@media (max-width:380px){
+  .kpis{grid-template-columns:1fr}
+  h1{font-size:1.8rem}
+}
 @media print{aside,.badges{display:none}body{font-size:10.5pt}section{page-break-inside:avoid}}
 """
 
@@ -246,6 +296,17 @@ SECTIONS = [
     ("limitations", "Limitations"),
     ("using", "Using it"),
 ]
+
+
+def _ext(href: str, body: str, cls: str = "") -> str:
+    """An outbound link. Opens in a new tab so the page is not navigated away
+    from mid-read; `noopener` because `target=_blank` otherwise exposes
+    `window.opener` to the destination."""
+    attrs = f' class="{cls}"' if cls else ""
+    return (
+        f'<a{attrs} href="{href}" target="_blank" rel="noopener noreferrer">'
+        f"{body}</a>"
+    )
 
 
 def _e(text: Any) -> str:
@@ -554,11 +615,15 @@ def build(artifacts: Path, out: Path) -> Path:
         "set for it before any model was trained. Both halves of that are the "
         "result, and the bar was never moved to fit.</p>"
         '<div class="cta">'
-        f'<a class="btn primary" href="{REPO}">{icon("terminal", 16)}View source</a>'
-        f'<a class="btn" href="#results">{icon("chart", 16)}Jump to results</a>'
-        f'<a class="btn" href="{REPO}/blob/main/MODEL_CARD.md">'
-        f'{icon("alert", 16)}Model card</a>'
-        f'<a class="btn" href="{PAPER}">{icon("flask", 16)}The paper</a>'
+        + _ext(REPO, f'{icon("terminal", 16)}View source', cls="btn primary")
+        + f'<a class="btn" href="#results">{icon("chart", 16)}Jump to results</a>'
+        + _ext(
+            f"{REPO}/blob/main/MODEL_CARD.md",
+            f'{icon("alert", 16)}Model card',
+            cls="btn",
+        )
+        + _ext(PAPER, f'{icon("flask", 16)}The paper', cls="btn")
+        +
         "</div></header>"
     )
 
@@ -574,7 +639,7 @@ def build(artifacts: Path, out: Path) -> Path:
             "would have recovered is worse than letting it run. That asymmetry is "
             "the whole problem: the value is in catching doomed sessions, the cost "
             "is in killing salvageable ones.</p>"
-            f'<p><a href="{PAPER}">Fail-Fast, Restart-Smart</a> (Wang et al., 2026) '
+            "<p>" + _ext(PAPER, "Fail-Fast, Restart-Smart") + ' (Wang et al., 2026) '
             "approaches this with a 0.6B neural monitor. Averta asks whether "
             "engineered trajectory features and a cheap classifier can do useful "
             "work at a fraction of that inference cost.</p>"
@@ -609,8 +674,9 @@ def build(artifacts: Path, out: Path) -> Path:
                         (f"{corpus['distinct_error_signatures']:,}", "error signatures"),
                     ]
                 ),
-                f'<p>Training data comes from <a href="{DATASET}">'
-                "SWE-Gym/OpenHands-Sampled-Trajectories</a>. A survey of six public "
+                "<p>Training data comes from "
+                + _ext(DATASET, "SWE-Gym/OpenHands-Sampled-Trajectories")
+                + ". A survey of six public "
                 "trajectory corpora found it to be the <strong>only one carrying both "
                 "outcome classes</strong> — the others are supervised fine-tuning sets "
                 "that store the agent's patch but never whether it worked.</p>"
@@ -958,7 +1024,7 @@ def build(artifacts: Path, out: Path) -> Path:
         f"<p>Generated {generated} from committed artifacts — every figure and table "
         "on this page is produced by <code>averta site</code> from JSON written by the "
         "pipeline, so it cannot drift out of sync with the results.</p>"
-        f'<p>Reproduces <a href="{PAPER}">arXiv:2608.03222</a>. MIT licensed; the '
+        "<p>Reproduces " + _ext(PAPER, "arXiv:2608.03222") + ". MIT licensed; the "
         "training corpus is not redistributed.</p>"
         "</footer></main></div>"
     )
@@ -985,8 +1051,13 @@ def build(artifacts: Path, out: Path) -> Path:
         "<div><b>2.1 KB</b>model</div>"
         "</div>"
     )
-    outbound = (
-        f'<a class="out" href="{REPO}">{icon("terminal", 15)}View source</a>'
+    # The hero already carries the primary "View source" call to action.
+    # Repeating it verbatim here would be noise, so this is an identity line —
+    # the repository handle — rather than a second button with the same label.
+    outbound = _ext(
+        REPO,
+        f'{icon("github", 15)}<span>mayurbijarniya/<b>averta</b></span>',
+        cls="repo",
     )
     body = body.replace(
         NAV_SLOT,
