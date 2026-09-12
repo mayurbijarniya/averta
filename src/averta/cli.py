@@ -31,6 +31,8 @@ from averta.report import (
 from averta.savings import load_token_estimates, simulate
 from averta.savings import render as render_savings
 from averta.schema import connect, write_sessions
+from averta.session import analyse
+from averta.session import render as render_session
 from averta.site import build as build_site
 from averta.thresholds import GATE_CUT_POINT
 from averta.train import cross_validate, gate, load_pooled, render_table
@@ -316,6 +318,51 @@ def site(
     mode = "self-contained" if inline else "figures linked from artifacts/"
     typer.echo(f"wrote {path} ({size / 1024:.0f} KB, {mode}, no JS)")
     typer.echo(f"open it with: open {path}")
+
+
+@app.command()
+def explain(
+    session: str = typer.Argument(None, help="session id; defaults to most recent"),
+    model_path: Path = typer.Option(DEFAULT_MODEL_PATH),
+    top: int = typer.Option(5, help="how many repetitions to list"),
+) -> None:
+    """Full analysis of one session: what repeated, and how risk moved."""
+    paths = discover_transcripts()
+    if not paths:
+        raise typer.BadParameter("no transcripts found under ~/.claude/projects")
+
+    if session:
+        matches = [p for p in paths if p.stem.startswith(session)]
+        if not matches:
+            raise typer.BadParameter(f"no transcript matching {session!r}")
+        chosen = matches[0]
+    else:
+        chosen = paths[0]
+
+    transcript = read_transcript(chosen)
+    scorer = Scorer.load(model_path) if model_path.exists() else None
+
+    report = analyse(
+        transcript.session_id,
+        transcript.turns,
+        scorer=scorer,
+        user_rejections=transcript.user_rejections,
+        top=top,
+    )
+    typer.echo(render_session(report, base_rate=scorer.base_rate if scorer else None))
+
+    typer.echo("")
+    typer.echo("TOKENS")
+    typer.echo(f"  output              {transcript.output_tokens:>14,}")
+    typer.echo(f"  input, uncached     {transcript.input_tokens:>14,}")
+    typer.echo(f"  cache read          {transcript.cache_read_tokens:>14,}")
+    typer.echo(f"  cache write         {transcript.cache_write_tokens:>14,}")
+    if transcript.cost_usd_snapshot is not None:
+        typer.echo(
+            f"  cost                ${transcript.cost_usd_snapshot:>13,.2f}  "
+            "(editor snapshot; lags the live session)"
+        )
+    typer.echo(f"\nproject: {transcript.repo}")
 
 
 @app.command()
