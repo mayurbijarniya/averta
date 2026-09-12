@@ -12,6 +12,16 @@ Modelling complete, across two attempts. The pre-registered decision gate
 **was not met** — see [Results](#results). Every number in this README was
 measured before it was written; none are projections.
 
+## Contents
+
+- [The question](#background) — what this set out to test
+- [Data](#data) — one corpus, because only one had labels
+- [Evaluation](#evaluation) — how correctness was protected
+- [Results](#results) — the gate, and both attempts
+- [Limitations](#limitations) — stated plainly
+- [Usage](#usage) — analyse your own sessions
+- [Results page](site/index.html) — the same findings as a browsable page
+
 ## Background
 
 When a coding agent works a task, the session either resolves it or it doesn't.
@@ -270,15 +280,90 @@ dozens of times.
 
 ## Usage
 
-Requires Python 3.11+. Nothing here calls a network API at inference time, and
-no session data leaves the machine.
+Requires Python 3.11+. Nothing calls a network API at inference time, and no
+session data leaves the machine.
+
+xgboost needs an OpenMP runtime, which is not bundled:
 
 ```bash
+brew install libomp          # macOS
+sudo apt-get install libgomp1  # Debian/Ubuntu
+```
+
+Then:
+
+```bash
+git clone <repo> && cd averta
 python3 -m venv .venv
 .venv/bin/python -m pip install -e ".[dev]"
 ```
 
-Reproduce the study from scratch:
+### Analyse your own sessions
+
+These work immediately — the trained model is committed, so no download is
+needed:
+
+```bash
+averta explain     # full analysis of your most recent coding session
+averta sessions    # list local Claude Code transcripts
+averta score       # just the risk estimate
+averta drift       # compare your sessions against the training corpus
+averta site        # rebuild the results page
+```
+
+`averta explain` is the one worth running. It separates what is **measured**
+from what is **estimated**, and never mixes them:
+
+```
+session 2e9e5250-7972-4be0-a210-bd8e7ab3c7e4
+turns: 1,417
+
+MEASURED — exact, no model involved
+  agent errors            8
+  user rejections         4  (not agent failures)
+  turns since a clean result  1
+
+  clustered repetition  (>=3x within 25 turns)
+    10x  file edit  turns 1357-1381  2,808 chars, 13x overall
+         src/averta/adapters/claude_code.py
+     6x  file edit  turns 1251-1271  4,038 chars, 8x overall
+         src/averta/site.py
+
+ESTIMATED — model did not clear its gate; context only
+  risk over turns 5-40   █▇▁█  (flat)
+    turn  10   87.2%
+    turn  40   89.4%
+  corpus base rate 90.6% — compare against this, not against zero
+  stops at turn 40: beyond the largest evaluated prefix, so no curve is drawn
+```
+
+The measured half needs no model and is as reliable as the transcript itself:
+recurring error signatures, tool calls reissued with byte-identical arguments,
+and edits clustered tightly in time. Repetition is ranked by **density**, not
+total count — editing one file 27 times across a thousand turns is ordinary
+iterative work, while five identical commands in twelve turns is a loop.
+
+The estimated half is labelled as such, shown against the base rate rather
+than against zero, and stops at the largest evaluated prefix instead of
+extrapolating a curve into territory the model never saw.
+
+Two details behind that output are worth stating.
+
+**The base rate is shown next to the probability.** Most sessions in the corpus
+fail, so 89.7% sounds alarming until you see that 90.6% is typical. Reporting
+the probability alone hid the fact that the model had no real signal. Scores are
+isotonically calibrated on out-of-fold predictions, because class weighting is
+needed for ranking but leaves raw scores on a re-balanced scale — that fix moved
+the Brier score from 0.2323 to 0.0826.
+
+**Long sessions are truncated, not extrapolated.** Features are cumulative over
+the prefix, so a 900-turn session scored against a model fitted on prefixes of
+at most 40 turns puts every count far outside the fitted range; that produced a
+meaningless 100.0% before the fix. The report always states which turn it
+actually scored.
+
+
+### Reproduce the study
 
 ```bash
 averta ingest      # normalize the public corpus into DuckDB (~12 min)
@@ -294,46 +379,6 @@ averta site        # build a static results page from the artifacts
 `averta train` exits non-zero when the gate is not met, which is its normal
 state here. Changing anything under `features/` invalidates the stored matrix,
 the model and the gate results — re-run `features → train → fit`.
-
-Score your own sessions:
-
-```bash
-averta fit         # train on pooled cut points, calibrate, persist the model
-averta sessions    # list local Claude Code transcripts
-averta score       # score the most recent one
-averta drift       # compare its features against the training corpus
-```
-
-```
-session 2e9e5250-7972-4be0-a210-bd8e7ab3c7e4
-turns observed: 1099
-scored on first 40 turns
-failure probability: 89.7%
-corpus base rate:    90.6%  (0.99x — no clear signal — indistinguishable from a typical session)
-
-strongest contributors
-  distinct_action_ratio             1.000  lowers risk
-  turns_seen                       40.000  raises risk
-  n_distinct_tools                  3.000  raises risk
-
-Trained on SWE-Gym OpenHands trajectories; applied to a different agent
-scaffold. Cross-scaffold accuracy is unmeasured — treat as indicative.
-```
-
-Two details in that output matter more than the percentage.
-
-**The base rate is shown next to the probability.** Most sessions in the corpus
-fail, so 89.7% sounds alarming until you see that 90.6% is typical. Reporting
-the probability alone hid the fact that the model had no real signal. Scores are
-isotonically calibrated on out-of-fold predictions, because class weighting is
-needed for ranking but leaves raw scores on a re-balanced scale — that fix moved
-the Brier score from 0.2323 to 0.0826.
-
-**Long sessions are truncated, not extrapolated.** Features are cumulative over
-the prefix, so a 900-turn session scored against a model fitted on prefixes of
-at most 40 turns puts every count far outside the fitted range; that produced a
-meaningless 100.0% before the fix. The report always states which turn it
-actually scored.
 
 ### MCP server
 
