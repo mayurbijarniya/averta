@@ -35,8 +35,8 @@
     "str_replace_editor": 76256,
     "execute_bash": 24612,
     "finish": 2755,
-    "view": 2,
     "undo_edit": 2,
+    "view": 2,
     "create_script": 1
   },
   "per_repo": [

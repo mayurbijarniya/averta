@@ -52,15 +52,18 @@ def corpus_summary(conn: duckdb.DuckDBPyConnection) -> dict[str, Any]:
         """
     ).fetchone()
 
+    # Break count ties by name. Without it, equal-count tools come back in
+    # arbitrary order and re-running this produces a diff in the committed
+    # JSON even when nothing changed.
     tools = conn.execute(
         "SELECT tool_name, count(*) FROM turn WHERE tool_name IS NOT NULL "
-        "GROUP BY 1 ORDER BY 2 DESC"
+        "GROUP BY 1 ORDER BY 2 DESC, 1 ASC"
     ).fetchall()
 
     per_repo = conn.execute(
         """
         SELECT repo, count(*) AS sessions, sum(outcome::INT) AS resolved
-        FROM session GROUP BY repo ORDER BY sessions DESC
+        FROM session GROUP BY repo ORDER BY sessions DESC, repo ASC
         """
     ).fetchall()
 
