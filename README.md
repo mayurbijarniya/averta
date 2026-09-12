@@ -1,58 +1,83 @@
 # Averta
 
-CPU-native failure prediction for AI coding agents.
+**Predicting when an AI coding agent is about to fail — from a 2 KB model that
+scores a live session in 0.18 ms on one CPU core.**
 
-> Can lightweight, CPU-native ML predict when a coding agent is heading toward
-> failure early enough to save tokens — without killing sessions that would have
-> recovered?
+![tests](https://img.shields.io/badge/tests-272%20passing-2f7d4f)
+![python](https://img.shields.io/badge/python-3.11%2B-blue)
+![license](https://img.shields.io/badge/license-MIT-lightgrey)
+![gate](https://img.shields.io/badge/pre--registered%20gate-not%20met-b0342f)
 
-## Status
+When a coding agent gets stuck, it keeps spending tokens that produce nothing.
+Averta watches a session and reports what is going wrong — and, separately,
+estimates whether the session is heading toward failure.
 
-Modelling complete, across two attempts. The pre-registered decision gate
-**was not met** — see [Results](#results). Every number in this README was
-measured before it was written; none are projections.
+```
+session 2e9e5250 · 1,417 turns
 
-## Contents
+MEASURED — exact, no model involved
+  agent errors            8
+  user rejections         4  (not agent failures)
 
-- [The question](#background) — what this set out to test
-- [Data](#data) — one corpus, because only one had labels
-- [Evaluation](#evaluation) — how correctness was protected
-- [Results](#results) — the gate, and both attempts
-- [Limitations](#limitations) — stated plainly
-- [Usage](#usage) — analyse your own sessions
-- [Results page](site/index.html) — the same findings as a browsable page
+  clustered repetition  (>=3x within 25 turns)
+    10x  file edit  turns 1357-1381   adapters/claude_code.py
+     6x  file edit  turns 1251-1271   site.py
 
-## Background
+ESTIMATED — model did not clear its gate; context only
+  risk over turns 5-40   █▇▁█
+  corpus base rate 90.6% — compare against this, not against zero
+```
 
-When a coding agent works a task, the session either resolves it or it doesn't.
-A session heading nowhere keeps spending tokens that produce no result, so
-detecting that early is worth doing — but stopping a session that would have
-recovered is worse than letting it run. That asymmetry is the whole problem:
-the value is in catching doomed sessions, the cost is in killing salvageable
-ones.
+## What this actually is
 
-[Fail-Fast, Restart-Smart](https://arxiv.org/abs/2608.03222) (Wang et al., 2026)
-approaches this with a 0.6B neural monitor over observable trajectory prefixes.
-Averta asks whether engineered trajectory features and a cheap classifier can
-do useful work at a fraction of that inference cost, locally on CPU.
+A **pre-registered evaluation study**. The success criteria were written into
+source control *before any model was trained*, so they could not be relaxed
+later to fit a disappointing result. They were then missed — twice, across two
+disclosed attempts judged against identical thresholds.
 
-## Approach
+That is the point of the project, not a footnote to it.
 
-Public agent trajectory datasets are normalized into a single schema, features
-are extracted from session prefixes, and a classifier predicts the eventual
-outcome from what is observable at a given turn.
+| | |
+|---|---|
+| **The question** | Can a cheap CPU model replace a 0.6B neural monitor for early failure detection? |
+| **The answer** | It recovers roughly **half** the token savings — 8.1% against a reported 14.6–20.4% — from a 2.1 KB model rather than a 0.6B-parameter one |
+| **The gate** | Required 0.25 recall at a 5% false-positive budget. Reached **0.191**. Not met. |
+| **What is solid** | AUROC **0.677** [0.651, 0.697] against three baselines pinned at 0.500 |
 
-Three constraints shape the design:
+Anyone can publish a model with a good number. The harder thing — and what
+this repository is really a demonstration of — is committing to a bar in
+advance, missing it, diagnosing *why*, retrying against the **unchanged** bar,
+missing again, and reporting both attempts.
 
-- **Prefix-only features.** A feature computed at turn *t* reads `turns[0:t]`
-  and nothing else — never the total length, never the outcome. A test suite
-  shuffles, truncates and extends the unseen tail and asserts the feature
-  vector is unchanged.
-- **Absolute turn indices.** Evaluating at "40% through the session" requires
-  knowing the total length, which is unavailable at inference time. Evaluation
-  uses turns 3, 5, 10, 20 and 40.
-- **Grouped splits.** Train/test splits group by repository, never by
-  trajectory.
+**[→ Full results, charts and methodology](site/index.html)** · rendered by
+`averta site` from the committed artifacts, so the page cannot drift from the
+numbers behind it.
+
+**[→ Model card](MODEL_CARD.md)** · intended use, measured limits, and what
+this model must not be used for.
+
+## How it works
+
+Public recordings of AI coding agents — 5,976 sessions where the outcome is
+known — are normalized into one schema. Features are extracted from the
+*first N turns only*, and a classifier predicts the eventual outcome from what
+was observable at that point.
+
+The useful half needs no model at all: recurring error signatures, tool calls
+reissued with byte-identical arguments, and edits clustered tightly in time are
+counted directly from the transcript. Output always separates what is
+**measured** from what is **estimated**.
+
+This reproduces and extends
+[Fail-Fast, Restart-Smart](https://arxiv.org/abs/2608.03222) (Wang et al.,
+2026), which uses a 0.6B neural monitor over the same kind of trajectory
+prefixes. The contribution here is the cheap-model comparison, measured.
+
+### Contents
+
+[Data](#data) · [Evaluation](#evaluation) · [Results](#results) ·
+[Two attempts](#the-two-attempts) · [Limitations](#limitations) ·
+[Usage](#usage) · [MCP server](#mcp-server)
 
 ## Data
 
@@ -103,6 +128,19 @@ Accuracy is never reported: at an 89% failure rate a model that always predicts
 failure scores 0.89 and is useless. Trivial baselines are reported alongside
 every model, and cross-validation folds group by repository so no model is
 tested on a codebase it trained on.
+
+Three constraints guard against the usual ways of fooling yourself:
+
+- **Prefix-only features.** A feature computed at turn *t* reads `turns[0:t]`
+  and nothing else — never the total length, never the outcome. A test suite
+  shuffles, truncates and extends the unseen tail and asserts the feature
+  vector is byte-identical.
+- **Absolute turn indices.** Evaluating at "40% through the session" needs the
+  total length, which is unknown while a session runs. Evaluation uses turns
+  3, 5, 10, 20 and 40.
+- **Repository-grouped splits.** Every row from a repository lands in one
+  fold, so no model is tested on a codebase it trained on. Confidence
+  intervals resample repositories rather than rows for the same reason.
 
 Success criteria were **pre-registered in `src/averta/thresholds.py` and
 committed before any model existed**, so they could not be relaxed to fit a

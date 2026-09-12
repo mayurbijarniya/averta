@@ -81,10 +81,6 @@ class SessionReport:
             return "flat"
         return "rising" if delta > 0 else "falling"
 
-    @property
-    def worst_repetition(self) -> Repetition | None:
-        return self.repetitions[0] if self.repetitions else None
-
 
 def _sparkline(values: list[float]) -> str:
     blocks = "▁▂▃▄▅▆▇█"

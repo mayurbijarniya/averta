@@ -79,10 +79,6 @@ class ClaudeCodeTranscript:
             + self.cache_write_tokens
         )
 
-    @property
-    def total_input_tokens(self) -> int:
-        return self.input_tokens + self.cache_read_tokens + self.cache_write_tokens
-
     def __len__(self) -> int:
         return len(self.turns)
 
