@@ -132,8 +132,8 @@ class TestTrajectory:
 class TestRender:
     def test_separates_measured_from_estimated(self, scorer):
         text = render(analyse("s", session(60), scorer=scorer), base_rate=0.88)
-        assert "MEASURED — exact, no model involved" in text
-        assert "ESTIMATED — model did not clear its gate" in text
+        assert "MEASURED, exact, no model involved" in text
+        assert "ESTIMATED, model did not clear its gate" in text
         assert text.index("MEASURED") < text.index("ESTIMATED")
 
     def test_shows_the_base_rate_for_comparison(self, scorer):

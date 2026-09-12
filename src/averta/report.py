@@ -150,8 +150,8 @@ def auroc_by_cut_plot(
 ) -> None:
     """AUROC against cut point, one line per model, with confidence bands.
 
-    Populations differ between cut points — a session only appears at cut *t*
-    if it reached turn *t* — so the lines are not a single model improving over
+    Populations differ between cut points, a session only appears at cut *t*
+    if it reached turn *t*, so the lines are not a single model improving over
     time. The caption says so.
     """
     fig, axis = plt.subplots(figsize=(8, 4.5))
@@ -224,7 +224,7 @@ def calibration_plot(
     axes[0].plot([0, 1], [0, 1], ":", color="#666", linewidth=0.9, label="perfect")
     raw_label = "raw (class-weighted)"
     if raw_brier is not None:
-        raw_label += f" — Brier {raw_brier:.3f}"
+        raw_label += f", Brier {raw_brier:.3f}"
     axes[0].plot(
         raw["predicted"], raw["observed"], "--s", color="#b03030",
         linewidth=1.4, markersize=4, alpha=0.85, label=raw_label,
@@ -232,7 +232,7 @@ def calibration_plot(
 
     cal_label = "isotonic calibrated"
     if calibrated_brier is not None:
-        cal_label += f" — Brier {calibrated_brier:.3f}"
+        cal_label += f", Brier {calibrated_brier:.3f}"
     axes[0].plot(
         calibrated["predicted"], calibrated["observed"], "-o",
         color=RESOLVED_COLOR, linewidth=2, label=cal_label,

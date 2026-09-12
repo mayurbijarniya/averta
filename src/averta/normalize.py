@@ -100,7 +100,7 @@ def scrub(text: str) -> str:
 HEAD_WINDOW = 300
 
 # A human declining a tool call is not an agent failure. Claude Code sets
-# `is_error` on these, and counting them inflates every error feature — it
+# `is_error` on these, and counting them inflates every error feature, it
 # would make a closely supervised session look like a struggling one.
 REJECTION_MARKERS = (
     "the user doesn't want to proceed",
@@ -143,7 +143,7 @@ def looks_like_error(content: str) -> bool:
 def error_signature(content: str, force: bool = False) -> str | None:
     """Reduce an error observation to a stable identity string.
 
-    `force` is for sources that flag failure explicitly — Claude Code sets
+    `force` is for sources that flag failure explicitly, Claude Code sets
     `is_error` on tool results. There the flag is authoritative, and text that
     does not match any known error pattern must still yield a signature, or
     the failure is counted without anything to group it by.

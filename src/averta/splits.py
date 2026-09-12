@@ -1,8 +1,8 @@
 """Grouped cross-validation.
 
 Splits are grouped by repository: every row from a repository lands in exactly
-one fold. Rows sharing a repository are not independent — the same codebase,
-the same test suite, often the same underlying issue attempted repeatedly — so
+one fold. Rows sharing a repository are not independent, the same codebase,
+the same test suite, often the same underlying issue attempted repeatedly, so
 splitting by row would let a model memorize a repository in training and be
 rewarded for it at test time.
 

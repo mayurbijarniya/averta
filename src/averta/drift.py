@@ -71,7 +71,7 @@ class DriftReport:
 
         if self.underpowered:
             lines += [
-                f"UNDERPOWERED — {self.n_local} local sessions is below the "
+                f"UNDERPOWERED, {self.n_local} local sessions is below the "
                 f"{MIN_SAMPLES_FOR_INFERENCE} needed for any inference.",
                 "These numbers describe this handful of sessions and nothing more.",
                 "They are not an estimate of cross-scaffold behaviour.",
@@ -110,7 +110,7 @@ def compare(
     """Standardized mean difference per feature, corpus against local.
 
     Positive means the local sessions score higher. The corpus standard
-    deviation is the denominator — the local sample is too small to estimate
+    deviation is the denominator, the local sample is too small to estimate
     a pooled one.
     """
     if corpus.shape[1] != len(feature_names) or local.shape[1] != len(feature_names):

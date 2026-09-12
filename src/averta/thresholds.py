@@ -7,20 +7,20 @@ and made the original relative threshold trivial to clear. That revision
 responded to data statistics, not to model results.
 
 These values are frozen. A run that misses them is a negative result and the
-documented fallback applies — see `.claude/phases/03-models-gate.md`.
+documented fallback applies, see `.claude/phases/03-models-gate.md`.
 
 ## Attempt history
 
-**Attempt 1 (2026-09-11) — NOT MET.** 23 aggregate features over the prefix.
+**Attempt 1 (2026-09-11), NOT MET.** 23 aggregate features over the prefix.
 Best AUROC 0.668 [0.645, 0.689]; recall at 5% FPR reached 0.155 against the
 required 0.25, and failed at every cut point. Permutation importance showed
 `n_repeated_calls` dominating at 0.198 AUROC drop while error-based features
 contributed almost nothing.
 
-**Attempt 2 (2026-09-11) — in progress.** Adds 10 sequence-structure features
+**Attempt 2 (2026-09-11), in progress.** Adds 10 sequence-structure features
 (`features/sequence.py`): n-gram recurrence, identical runs, alternation,
 return distance, action-stream compressibility, repeat acceleration. Motivated
-by attempt 1's own importance ranking — its strongest signal was a flat count
+by attempt 1's own importance ranking, its strongest signal was a flat count
 of repetition, which is precisely what ordering would express properly.
 
 The thresholds below are **unchanged from attempt 1 on purpose.** A second

@@ -4,7 +4,7 @@ The baselines are not decoration. With a positive class near one in ten, a
 model that looks strong on any threshold-free metric must still be shown to
 beat predicting the base rate everywhere, and to beat using the turn index
 alone. Phase 0 measured turn count as nearly outcome-independent, so the
-turn-index baseline is expected to sit close to chance — it is reported anyway
+turn-index baseline is expected to sit close to chance, it is reported anyway
 so that expectation is evidenced rather than asserted.
 
 Every estimator carries class weighting. Unweighted fits on this corpus

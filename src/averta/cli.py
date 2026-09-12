@@ -38,7 +38,7 @@ from averta.thresholds import GATE_CUT_POINT
 from averta.train import cross_validate, gate, load_pooled, render_table
 from averta.train import load as load_dataset
 
-app = typer.Typer(add_completion=False, help="Averta — failure prediction for coding agents.")
+app = typer.Typer(add_completion=False, help="Averta, failure prediction for coding agents.")
 
 DEFAULT_DB = Path("data/averta.duckdb")
 BATCH_SIZE = 250
@@ -47,7 +47,7 @@ BATCH_SIZE = 250
 def require_db(db: Path) -> None:
     """Fail with the command that fixes it, not just the missing path.
 
-    The corpus is not committed — the source carries no declared license — so
+    The corpus is not committed, the source carries no declared license, so
     a fresh clone always lands here first. Saying only "does not exist" leaves
     the reader to work out that a 12-minute download is the answer.
     """

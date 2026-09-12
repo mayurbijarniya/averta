@@ -2,7 +2,7 @@
 
 The model is trained on SWE-Gym OpenHands trajectories and applied here to
 Claude Code transcripts, which is a different agent scaffold with a different
-tool vocabulary. That transfer is unvalidated — `RiskReport.transfer_warning`
+tool vocabulary. That transfer is unvalidated, `RiskReport.transfer_warning`
 carries the caveat so it cannot be quietly dropped from any output.
 """
 
@@ -24,7 +24,7 @@ MIN_TURNS_TO_SCORE = 5
 
 TRANSFER_WARNING = (
     "Trained on SWE-Gym OpenHands trajectories; applied to a different agent "
-    "scaffold. Cross-scaffold accuracy is unmeasured — treat as indicative."
+    "scaffold. Cross-scaffold accuracy is unmeasured, treat as indicative."
 )
 
 EARLY_WARNING = (
@@ -78,7 +78,7 @@ class RiskReport:
             return "not scored"
         delta = self.failure_probability - self.base_rate
         if abs(delta) <= NEUTRAL_BAND:
-            return "no clear signal — indistinguishable from a typical session"
+            return "no clear signal, indistinguishable from a typical session"
         return "worse than typical" if delta > 0 else "better than typical"
 
     def render(self) -> str:
@@ -94,7 +94,7 @@ class RiskReport:
         if self.base_rate is not None:
             lines.append(
                 f"corpus base rate:    {self.base_rate:.1%}  "
-                f"({self.lift:.2f}x — {self.verdict})"
+                f"({self.lift:.2f}x, {self.verdict})"
             )
 
         if self.drivers:

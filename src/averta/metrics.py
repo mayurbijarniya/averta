@@ -59,7 +59,7 @@ def auroc(y_true: Sequence[int], y_score: Sequence[float]) -> float:
 
 
 def auprc(y_true: Sequence[int], y_score: Sequence[float]) -> float:
-    """Average precision — the step-wise area under the precision/recall curve."""
+    """Average precision, the step-wise area under the precision/recall curve."""
     truth, score = _as_arrays(y_true, y_score)
     n_pos = int((truth == 1).sum())
     if n_pos == 0:

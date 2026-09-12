@@ -1,8 +1,8 @@
 """Sequence-structure features over the action stream.
 
 Attempt one used only aggregate counts over the prefix. Its strongest feature
-by a wide margin was `n_repeated_calls` — a flat tally of calls reissued with
-identical arguments — while error-based features contributed almost nothing.
+by a wide margin was `n_repeated_calls`, a flat tally of calls reissued with
+identical arguments, while error-based features contributed almost nothing.
 That points at ordering as the missing ingredient: a count knows an action
 recurred, not that the agent is cycling A-B-A-B, nor how far back it reached
 to repeat itself.
@@ -122,7 +122,7 @@ def action_compression_ratio(prefix: Prefix) -> float:
     further. Returns 1.0 when there is nothing to compress.
 
     Raw deflate is used rather than `zlib.compress`, whose ~11 byte header
-    dominates short inputs — on local sessions that produced ratios of 1.85,
+    dominates short inputs, on local sessions that produced ratios of 1.85,
     which is meaningless for a quantity defined as compressed over raw. The
     result is still clamped, since even raw deflate adds a few bytes for
     incompressible input.
@@ -160,7 +160,7 @@ def edit_then_error_rate(prefix: Prefix) -> float:
 def repeat_acceleration(prefix: Prefix) -> float:
     """Repeat density in the recent half against the earlier half.
 
-    Above 1.0 means the agent is repeating itself more than it was — the shape
+    Above 1.0 means the agent is repeating itself more than it was, the shape
     a stalling session takes, as opposed to one that repeated early and then
     moved on.
     """

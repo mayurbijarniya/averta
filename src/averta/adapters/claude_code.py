@@ -10,7 +10,7 @@ The format differs from the training corpus in three ways that matter:
   `tool_result`) rather than a string, and tool calls are blocks inside an
   assistant message rather than a separate `tool_calls` field.
 - Tool results arrive as `tool_result` blocks inside *user* records, and carry
-  an explicit `is_error` flag — more reliable than the text heuristics needed
+  an explicit `is_error` flag, more reliable than the text heuristics needed
   for the training data, which are kept only as a fallback.
 - Real token counts are present in `message.usage`. The training corpus has
   none, so the model cannot use them as features, but they make token-saving
@@ -68,7 +68,7 @@ class ClaudeCodeTranscript:
         """All input and output, cached or not.
 
         `usage.input_tokens` counts only uncached input. Under prompt caching
-        that is a rounding error — one record showed `input_tokens: 2` beside
+        that is a rounding error, one record showed `input_tokens: 2` beside
         `cache_read_input_tokens: 18,641`. Summing the plain field alone
         undercounted a real session's input by three orders of magnitude.
         """
@@ -138,7 +138,7 @@ def read_transcript(path: Path) -> ClaudeCodeTranscript:
                 continue
 
             # Cost is recorded directly by the editor, which is better than
-            # deriving it — that would need current per-model pricing and the
+            # deriving it, that would need current per-model pricing and the
             # cache-read discount. But the record is a periodic snapshot, not
             # a running total: on a multi-hour session the last one carried
             # `totalDuration` of 876s. Treat it as a lower bound.

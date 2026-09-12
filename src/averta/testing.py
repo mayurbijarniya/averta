@@ -1,7 +1,7 @@
 """Builders for synthetic sessions and transcripts.
 
 Lives inside the package rather than under `tests/` so that both pytest and
-type checkers resolve it from the single `src` import root — cross-importing
+type checkers resolve it from the single `src` import root, cross-importing
 between test modules relies on pytest's path handling and nothing else agrees
 with it.
 
@@ -118,7 +118,7 @@ def write_transcript(
     """Write records as a transcript under a Claude Code style directory.
 
     The project directory name starts with `-`, matching how Claude Code
-    encodes an absolute cwd — which is also what makes these paths awkward for
+    encodes an absolute cwd, which is also what makes these paths awkward for
     shell globbing.
     """
     project = root / "-some-project"

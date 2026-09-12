@@ -11,7 +11,7 @@ No JavaScript. Hover affordances are CSS-only, so the page still works from a
 
 Colours are the validated categorical slots 1 (blue) and 2 (orange), which
 clear the CVD, chroma, lightness and contrast checks in both light and dark
-modes. Series are never distinguished by colour alone — every series carries a
+modes. Series are never distinguished by colour alone, every series carries a
 direct label as well.
 """
 
@@ -61,7 +61,7 @@ def line_chart(
 ) -> str:
     """Line chart with optional confidence bands and a reference rule.
 
-    `x_categorical` spaces the ticks evenly rather than by value — cut points
+    `x_categorical` spaces the ticks evenly rather than by value, cut points
     of 3/5/10/20/40 are ordered labels, not a continuous axis, and spacing them
     linearly would imply the gap between 20 and 40 carries meaning.
     """
@@ -79,7 +79,7 @@ def line_chart(
 
     sx = _scale(min(domain), max(domain), width, left, right)
     sy = _scale(min(y_ticks), max(y_ticks), height, bottom, top)
-    py = lambda v: height - sy(v)  # noqa: E731 — flip to screen coordinates
+    py = lambda v: height - sy(v)  # noqa: E731, flip to screen coordinates
 
     out = [
         f'<svg class="chart" viewBox="0 0 {width} {height}" role="img" '
@@ -231,7 +231,7 @@ def paired_charts(
     data. Two panels on a shared x-axis show the same trade-off without
     implying one.
     """
-    # One rounding, used for both the points and the ticks — rounding them
+    # One rounding, used for both the points and the ticks, rounding them
     # separately leaves the tick lookup with keys the points never match.
     xs = [round(v, 3) for v in x]
 

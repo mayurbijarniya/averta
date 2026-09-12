@@ -231,7 +231,7 @@ def analyse(
 def render(report: SessionReport, base_rate: float | None = None) -> str:
     lines = [f"session {report.session_id}", f"turns: {report.turns:,}", ""]
 
-    lines.append("MEASURED — exact, no model involved")
+    lines.append("MEASURED, exact, no model involved")
     lines.append(f"  agent errors            {report.error_turns}")
     lines.append(f"  user rejections         {report.user_rejections}  (not agent failures)")
     lines.append(f"  turns since a clean result  {report.turns_since_clean}")
@@ -254,13 +254,13 @@ def render(report: SessionReport, base_rate: float | None = None) -> str:
     else:
         lines.append("")
         lines.append(
-            f"  no clustered repetition — nothing recurred {MIN_CLUSTERED}+ times "
+            f"  no clustered repetition, nothing recurred {MIN_CLUSTERED}+ times "
             f"within {WINDOW} turns"
         )
 
     if report.trajectory:
         lines.append("")
-        lines.append("ESTIMATED — model did not clear its gate; context only")
+        lines.append("ESTIMATED, model did not clear its gate; context only")
         spark = _sparkline([p.probability for p in report.trajectory])
         lines.append(f"  risk over turns {report.trajectory[0].turn}-"
                      f"{report.trajectory[-1].turn}   {spark}  ({report.risk_direction})")
@@ -268,7 +268,7 @@ def render(report: SessionReport, base_rate: float | None = None) -> str:
             bar = "█" * max(int(point.probability * 30), 1)
             lines.append(f"    turn {point.turn:>3}  {point.probability:>6.1%}  {bar}")
         if base_rate is not None:
-            lines.append(f"  corpus base rate {base_rate:.1%} — compare against this, "
+            lines.append(f"  corpus base rate {base_rate:.1%}, compare against this, "
                          "not against zero")
         if report.scored_through and report.turns > report.scored_through:
             lines.append(

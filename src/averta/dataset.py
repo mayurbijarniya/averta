@@ -1,7 +1,7 @@
 """Builds the prefix feature matrix.
 
 One row per (session, cut point). A cut point *t* is an absolute turn index,
-never a fraction of the session — total length is unknown at inference time.
+never a fraction of the session, total length is unknown at inference time.
 A session only contributes a row at *t* if it actually reached turn *t*, which
 means the population changes as *t* grows. `resolve_rate` is reported per cut
 so that shift stays visible.

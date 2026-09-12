@@ -7,7 +7,7 @@ Code sessions do carry real `usage` counts; those are exact and handled by the
 adapter, not here.
 
 The simulation is deliberately conservative. Stopping a session at turn *t*
-saves only what was spent *after* turn *t* — the tokens already consumed are
+saves only what was spent *after* turn *t*, the tokens already consumed are
 gone either way, and a restart is not free.
 """
 
@@ -83,7 +83,7 @@ def simulate(
     """Sweep intervention thresholds, reporting savings against harm.
 
     A flagged failing session saves the tokens it would have spent after the
-    cut. A flagged *successful* session saves nothing and destroys the result —
+    cut. A flagged *successful* session saves nothing and destroys the result -
     counted separately as `successes_terminated`, never netted off the savings.
     """
     if thresholds is None:

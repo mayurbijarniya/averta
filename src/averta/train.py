@@ -4,7 +4,7 @@ Predictions are pooled out-of-fold: every row is scored exactly once, by a
 model that never saw its repository during training. Metrics are computed on
 that pooled vector, and confidence intervals resample repositories.
 
-**Label polarity.** The positive class is *failure* — the session does not
+**Label polarity.** The positive class is *failure*, the session does not
 resolve. That is the event the tool warns about, and it makes the false
 positive rate mean "sessions that would have succeeded but were flagged",
 which is the safety quantity the gate constrains.
@@ -107,7 +107,7 @@ def load_pooled(db: str, cut_points: Sequence[int]) -> Dataset:
 
     The per-cut datasets are what the gate is evaluated on. A deployed monitor
     scores whatever prefix exists right now, so it needs a model trained across
-    prefix lengths rather than at a single one — otherwise features like
+    prefix lengths rather than at a single one, otherwise features like
     `n_tool_calls` fall far outside the range it was fitted on.
     """
     conn = duckdb.connect(db, read_only=True)

@@ -96,7 +96,7 @@ def get_session_risk(session: str | None = None, model_path: str | None = None) 
 def get_repeated_failures(session: str | None = None, limit: int = 10) -> dict[str, Any]:
     """List approaches already tried and failed in this session.
 
-    Deterministic — no model involved. Errors are grouped by a normalized
+    Deterministic, no model involved. Errors are grouped by a normalized
     signature so the same failure recurring with different paths or line
     numbers collapses into one entry. Repeated tool calls are grouped by a hash
     of their exact arguments.
@@ -161,7 +161,7 @@ def should_i_restart(
         recommendation = "continue"
         reason = (
             f"failure probability {probability:.0%} is at or below the "
-            f"{base_rate:.0%} base rate — no evidence this session is unusual"
+            f"{base_rate:.0%} base rate, no evidence this session is unusual"
         )
     elif probability >= threshold:
         recommendation = "consider restarting"
