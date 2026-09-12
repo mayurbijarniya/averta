@@ -60,9 +60,14 @@ body{
 
 @media (min-width:960px){
   .shell{grid-template-columns:16rem minmax(0,1fr);gap:4rem}
+  /* The shell is capped at 88rem and centred, so a window wider than that
+     leaves a gutter on each side. The right one is invisible because main
+     has no background; the left one would show page colour beside the
+     panel. The shadow paints that gutter without affecting layout or
+     adding scroll, which keeps the measure capped and the panel full-bleed. */
   aside{position:sticky;top:0;height:100vh;overflow-y:auto;
     padding:2.5rem 1.4rem 2rem 1.5rem;border-right:1px solid var(--line);
-    background:var(--panel)}
+    background:var(--panel);box-shadow:-100vw 0 0 var(--panel)}
   .closer{display:none}
 }
 main{padding:0 1.5rem 6rem;min-width:0}
