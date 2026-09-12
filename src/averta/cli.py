@@ -44,6 +44,24 @@ DEFAULT_DB = Path("data/averta.duckdb")
 BATCH_SIZE = 250
 
 
+def require_db(db: Path) -> None:
+    """Fail with the command that fixes it, not just the missing path.
+
+    The corpus is not committed — the source carries no declared license — so
+    a fresh clone always lands here first. Saying only "does not exist" leaves
+    the reader to work out that a 12-minute download is the answer.
+    """
+    if db.exists():
+        return
+    raise typer.BadParameter(
+        f"{db} not found.\n\n"
+        "  The training corpus is not distributed with this repository.\n"
+        "  Build it first:   averta ingest      (downloads ~6,000 sessions, ~12 min)\n"
+        "  Then:             averta features\n\n"
+        "  Commands that need no database: score, explain, sessions, site"
+    )
+
+
 @app.command()
 def ingest(
     source: str = typer.Option("swegym", help=f"one of {', '.join(ADAPTERS)}"),
@@ -95,8 +113,7 @@ def features(
     db: Path = typer.Option(DEFAULT_DB),
 ) -> None:
     """Build the prefix feature matrix from ingested sessions."""
-    if not db.exists():
-        raise typer.BadParameter(f"{db} does not exist")
+    require_db(db)
 
     conn = connect(str(db))
     try:
@@ -118,8 +135,7 @@ def report(
     out: Path = typer.Option(Path("artifacts/phase1"), help="directory for artifacts"),
 ) -> None:
     """Write corpus summary statistics and the turn distribution plot."""
-    if not db.exists():
-        raise typer.BadParameter(f"{db} does not exist")
+    require_db(db)
 
     summary = write_phase1_artifacts(str(db), out)
 
@@ -147,8 +163,7 @@ def train(
     out: Path = typer.Option(Path("artifacts/phase3"), help="directory for results"),
 ) -> None:
     """Cross-validate every model at one cut point and apply the gate."""
-    if not db.exists():
-        raise typer.BadParameter(f"{db} does not exist")
+    require_db(db)
 
     data = load_dataset(str(db), cut)
     typer.echo(f"cut point {cut}: {len(data)} rows, failure rate {data.failure_rate:.2%}\n")
@@ -201,8 +216,7 @@ def diagnose(
     out: Path = typer.Option(Path("artifacts/phase4")),
 ) -> None:
     """Feature importance, calibration, and CPU inference cost."""
-    if not db.exists():
-        raise typer.BadParameter(f"{db} does not exist")
+    require_db(db)
 
     data = load_dataset(str(db), cut)
     typer.echo(f"cut point {cut}: {len(data)} rows, failure rate {data.failure_rate:.2%}\n")
@@ -237,8 +251,7 @@ def figures(
     out: Path = typer.Option(Path("artifacts/figures")),
 ) -> None:
     """Render the three result figures for the README."""
-    if not db.exists():
-        raise typer.BadParameter(f"{db} does not exist")
+    require_db(db)
 
     out.mkdir(parents=True, exist_ok=True)
 
@@ -282,8 +295,7 @@ def savings(
     out: Path = typer.Option(Path("artifacts/phase4")),
 ) -> None:
     """Simulate token savings against sessions wrongly terminated."""
-    if not db.exists():
-        raise typer.BadParameter(f"{db} does not exist")
+    require_db(db)
 
     data = load_dataset(str(db), cut)
     predictions = out_of_fold_predictions(data, model)
@@ -372,8 +384,7 @@ def drift(
     out: Path = typer.Option(Path("artifacts/phase6")),
 ) -> None:
     """Compare feature distributions between the corpus and local sessions."""
-    if not db.exists():
-        raise typer.BadParameter(f"{db} does not exist")
+    require_db(db)
 
     paths = discover_transcripts()
     if not paths:
@@ -425,8 +436,7 @@ def fit(
     path: Path = typer.Option(DEFAULT_MODEL_PATH, help="where to write the model"),
 ) -> None:
     """Train on the full corpus at one cut point and persist the model."""
-    if not db.exists():
-        raise typer.BadParameter(f"{db} does not exist")
+    require_db(db)
 
     data = load_pooled(str(db), CUT_POINTS)
 
@@ -534,8 +544,7 @@ CHECKS = {
 @app.command()
 def validate(db: Path = typer.Option(DEFAULT_DB)) -> None:
     """Fail loudly on any structural problem in the store."""
-    if not db.exists():
-        raise typer.BadParameter(f"{db} does not exist")
+    require_db(db)
 
     conn = connect(str(db))
     failures = 0
@@ -561,8 +570,7 @@ def validate(db: Path = typer.Option(DEFAULT_DB)) -> None:
 @app.command()
 def stats(db: Path = typer.Option(DEFAULT_DB)) -> None:
     """Summarize what is currently in the store."""
-    if not db.exists():
-        raise typer.BadParameter(f"{db} does not exist")
+    require_db(db)
 
     conn = connect(str(db))
 
