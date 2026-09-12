@@ -502,6 +502,61 @@ def _auroc_chart(artifacts: Path) -> str:
     )
 
 
+def _worst_calibrated_bin(cal: dict[str, Any]) -> tuple[float, float] | None:
+    """The bin whose raw score most understates the observed failure rate.
+
+    Restricted to bins holding at least 1% of the scored rows. Without that
+    floor the widest gap sits in a bin of seven sessions, where one observation
+    moves the rate by fourteen points, and the page would quote noise as its
+    illustration of the miscalibration.
+    """
+    bins = list(
+        zip(
+            cal["raw"]["predicted"],
+            cal["raw"]["observed"],
+            cal["raw"]["counts"],
+            strict=True,
+        )
+    )
+    floor = 0.01 * sum(count for *_, count in bins)
+    eligible = [b for b in bins if b[2] >= floor]
+    if not eligible:
+        return None
+    predicted, observed, _ = max(eligible, key=lambda b: b[1] - b[0])
+    return predicted, observed
+
+
+def _calibration_section(diag: dict[str, Any]) -> str:
+    """The calibration section, with every figure read from the artifact.
+
+    These numbers were hard-coded once and went stale when the pipeline was
+    re-run, leaving the paragraph quoting one pair of Brier scores beside a
+    chart legend rendering another.
+    """
+    cal = diag["calibration"]
+    worst = _worst_calibrated_bin(cal)
+    example = (
+        f"A raw score of {worst[0]:.2f} corresponded to an observed failure rate "
+        f"near {worst[1]:.2f}. "
+        if worst
+        else ""
+    )
+    return _section(
+        "calibration",
+        "Calibration",
+        "A bug the plot caught, kept visible because the before-curve is the lesson.",
+        "<p>Every model is fitted with class weighting, which is correct for ranking "
+        f"but leaves the output on a re-balanced scale. {example}Rank-based metrics "
+        "are unaffected, but any number shown to a person has to mean what it says.</p>"
+        "<p>Isotonic regression fitted on <strong>out-of-fold</strong> scores "
+        f"corrects it, moving the Brier score from {cal['brier_raw']:.4f} to "
+        f"{cal['brier_calibrated']:.4f}. Fitting the calibrator on training "
+        "predictions would have learned the model's own overconfidence and "
+        "reported it back as calibrated.</p>",
+        _calibration_chart(diag),
+    )
+
+
 def _calibration_chart(diag: dict[str, Any] | None) -> str:
     """Reliability curve, raw against calibrated, with the ideal diagonal."""
     if not diag or "calibration" not in diag:
@@ -891,45 +946,8 @@ def build(artifacts: Path, out: Path) -> Path:
         )
 
     # ---- calibration ------------------------------------------------------
-    # Read straight from the artifact. These figures were hard-coded once and
-    # went stale when the pipeline was re-run, leaving the paragraph quoting
-    # one pair of Brier scores beside a chart legend rendering another.
-    _cal = diag["calibration"]
-    # The bin where the raw score understates the observed rate by the most,
-    # among bins holding at least 1% of the scored rows. Without that floor the
-    # worst gap sits in a bin of seven sessions, where one observation moves the
-    # rate by 14 points, and the page would quote noise as its illustration.
-    _bins = list(
-        zip(
-            _cal["raw"]["predicted"],
-            _cal["raw"]["observed"],
-            _cal["raw"]["counts"],
-            strict=True,
-        )
-    )
-    _floor = 0.01 * sum(count for *_, count in _bins)
-    _worst = max(
-        (b for b in _bins if b[2] >= _floor),
-        key=lambda bin_: bin_[1] - bin_[0],
-    )
-    parts.append(
-        _section(
-            "calibration",
-            "Calibration",
-            "A bug the plot caught, kept visible because the before-curve is the lesson.",
-            "<p>Every model is fitted with class weighting, which is correct for ranking "
-            f"but leaves the output on a re-balanced scale. A raw score of {_worst[0]:.2f} "
-            f"corresponded to an observed failure rate near {_worst[1]:.2f}. Rank-based "
-            "metrics are unaffected, but any number shown to a person has to mean what "
-            "it says.</p>"
-            "<p>Isotonic regression fitted on <strong>out-of-fold</strong> scores "
-            f"corrects it, moving the Brier score from {_cal['brier_raw']:.4f} to "
-            f"{_cal['brier_calibrated']:.4f}. Fitting the "
-            "calibrator on training predictions would have learned the model's own "
-            "overconfidence and reported it back as calibrated.</p>",
-            _calibration_chart(diag),
-        )
-    )
+    if diag and "calibration" in diag:
+        parts.append(_calibration_section(diag))
 
     # ---- savings ----------------------------------------------------------
     if savings:
