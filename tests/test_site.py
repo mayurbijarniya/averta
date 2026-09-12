@@ -72,7 +72,7 @@ def artifacts(tmp_path):
 
 @pytest.fixture
 def full_artifacts(artifacts):
-    """Enough for every chart to render — the AUROC curve needs several cuts."""
+    """Enough for every chart to render, the AUROC curve needs several cuts."""
     for cut in (3, 5, 20, 40):
         payload = json.loads(json.dumps(GATE))
         payload["cut_point"] = cut
@@ -162,6 +162,35 @@ class TestBuild:
             assert "http" not in tag, f"fetches an external resource: {tag}"
         assert not re.search(r'@import|url\(\s*["\']?http', text)
 
+    def test_no_em_dashes(self, artifacts, tmp_path):
+        text = build(artifacts, tmp_path / "index.html").read_text()
+        assert "—" not in text
+
+    def test_small_screens_get_a_drawer_not_a_pill_strip(self, artifacts, tmp_path):
+        # The nav carries a dozen entries. As a horizontal strip it overflowed
+        # every phone width, so below the breakpoint it becomes an off-canvas
+        # drawer opened by :target, which needs no JavaScript.
+        text = build(artifacts, tmp_path / "index.html").read_text()
+        assert 'href="#menu"' in text
+        assert 'id="menu"' in text
+        assert "aside:target" in text
+        # The trigger and the scrim must both be inside a max-width block,
+        # otherwise they leak onto desktop.
+        small = "\n".join(re.findall(r"@media\s*\(max-width:[^{]*\{.*?\}\s*\}", text, re.S))
+        assert ".burger" in small
+        assert "translateX" in small
+        # The scrim must be a sibling of the drawer, not a child. A child
+        # would take the open drawer's transform as its containing block and
+        # shrink to the drawer's own width.
+        assert "aside:target ~ .scrim" in small
+        assert re.search(r"</aside>\s*<a class=\"scrim\"", text)
+
+    def test_every_outbound_link_opens_in_a_new_tab(self, artifacts, tmp_path):
+        text = build(artifacts, tmp_path / "index.html").read_text()
+        for tag in re.findall(r"<a\b[^>]*href=\"https?://[^>]*>", text):
+            assert 'target="_blank"' in tag, tag
+            assert "noopener" in tag, tag
+
     def test_links_to_the_source(self, artifacts, tmp_path):
         # A reader who arrives at the results must be able to reach the code.
         text = build(artifacts, tmp_path / "index.html").read_text()
@@ -235,7 +264,7 @@ class TestBuild:
             assert "aria-label=" in chart
 
     def test_icons_are_hidden_from_assistive_tech(self, full_artifacts, tmp_path):
-        # Icons are decorative — every one sits beside a text label, so
+        # Icons are decorative, every one sits beside a text label, so
         # announcing them would just add noise for a screen reader.
         text = build(full_artifacts, tmp_path / "index.html").read_text()
         icons = [s for s in re.findall(r"<svg\b[^>]*>", text) if "lucide" in s]

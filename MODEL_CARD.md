@@ -1,4 +1,4 @@
-# Model Card — Averta failure predictor
+# Model Card: Averta failure predictor
 
 Last updated 2026-09-12. Every figure here is measured; see `artifacts/` for
 the JSON each one comes from.
@@ -7,7 +7,7 @@ the JSON each one comes from.
 
 | | |
 |---|---|
-| **Task** | Binary classification — will this coding-agent session fail to resolve its task? |
+| **Task** | Binary classification, will this coding-agent session fail to resolve its task? |
 | **Positive class** | **Failure** (session does not resolve) |
 | **Input** | 33 numeric features over the first *N* turns of a session |
 | **Output** | Calibrated probability of failure |
@@ -26,13 +26,13 @@ score is supporting context.
 
 **It did not meet its acceptance criteria.** See [Evaluation](#evaluation).
 
-## Out of scope — do not use it for these
+## Out of scope: do not use it for these
 
 - **Automatically terminating sessions.** At a 5% false-positive budget it
   catches 19.1% of failing sessions. Four in five doomed sessions pass
   unflagged, and acting automatically would destroy recoverable work for a
   minority of the waste.
-- **Any consequential or irreversible decision** — billing, access, scheduling,
+- **Any consequential or irreversible decision**, billing, access, scheduling,
   or evaluating a person's work.
 - **Agent scaffolds other than OpenHands**, without re-measuring. Applied to
   Claude Code transcripts, every comparable feature shifts by more than 1.3
@@ -40,7 +40,7 @@ score is supporting context.
   Cross-scaffold accuracy is **unmeasured**.
 - **Sessions beyond 40 turns.** Features are cumulative over the prefix, so
   anything longer is out of distribution. The scorer truncates to the largest
-  evaluated cut and says so rather than extrapolating — before that guard, a
+  evaluated cut and says so rather than extrapolating, before that guard, a
   935-turn session scored a meaningless 100.0%.
 - **Sessions under 5 turns.** Every model scored at chance at turn 3. No score
   is returned.
@@ -48,7 +48,7 @@ score is supporting context.
 ## Training data
 
 [SWE-Gym/OpenHands-Sampled-Trajectories](https://huggingface.co/datasets/SWE-Gym/OpenHands-Sampled-Trajectories)
-— OpenHands agent attempts at SWE-bench-style issues, each labelled with
+- OpenHands agent attempts at SWE-bench-style issues, each labelled with
 whether it resolved the issue.
 
 Chosen because a survey of six public corpora found it to be the **only one
@@ -104,7 +104,7 @@ scores 0.89 and is useless.
 ### Calibration
 
 Class weighting is necessary for ranking but leaves raw scores on a
-re-balanced scale — a raw 0.25 corresponded to an observed failure rate near
+re-balanced scale, a raw 0.25 corresponded to an observed failure rate near
 0.70. An isotonic layer fitted on **out-of-fold** predictions corrects this,
 moving the Brier score from **0.2323 to 0.0826**.
 
@@ -125,7 +125,7 @@ Permutation importance under the same grouped folds:
 | `action_bigram_repeat_max` | 0.078 |
 | `n_repeated_calls` | 0.030 |
 
-The prior expectation — that recurring error signatures would dominate — was
+The prior expectation, that recurring error signatures would dominate, was
 wrong. Failure is predicted by **declining action novelty**: a session heading
 nowhere is one that has stopped trying new things, which is a different
 phenomenon from one that keeps hitting the same wall.
@@ -138,7 +138,7 @@ sessions-terminated are never combined into one net figure, because a net
 number lets the harm disappear into an aggregate.
 
 **It must not be used to evaluate people.** It scores an agent trajectory, not
-a developer. A session that looks repetitive may be careful iterative work —
+a developer. A session that looks repetitive may be careful iterative work;
 the repetition detector explicitly ranks by density within a short window for
 this reason, because editing one file 27 times across a thousand turns is
 ordinary development.

@@ -6,7 +6,7 @@ toolchain, `node_modules` and a build step would be infrastructure added for
 no capability, and a page generated from the artifacts cannot drift out of
 sync with them.
 
-Charts are inline SVG rather than rendered images — see `charts.py` for why —
+Charts are inline SVG rather than rendered images, see `charts.py` for why -
 so the page is entirely self-contained: no CDN, no external CSS, no
 JavaScript, no image files to ship alongside it.
 """
@@ -60,61 +60,48 @@ body{
   border-radius:var(--r);z-index:20}
 
 /* ---- layout -------------------------------------------------------------
-   Three shapes, not one grid that degrades:
-   · phone  — brand row, nav as a horizontally scrolling strip pinned to top
-   · tablet — same, with roomier type
-   · laptop — a true sticky sidebar beside the content                        */
+   Laptop gets a sticky sidebar. Phone and tablet get a real off-canvas
+   drawer, opened with :target so no JavaScript is needed. Tapping any
+   section link changes the hash, which un-targets the drawer and closes it
+   on the way to the section. */
 .shell{display:grid;grid-template-columns:1fr;max-width:88rem;margin:0 auto}
-aside{padding:1rem 1.1rem;border-bottom:1px solid var(--line);background:var(--panel);
-  position:sticky;top:0;z-index:10}
 
-/* Phone and tablet: the nav scrolls sideways instead of stacking twelve rows
-   of links above the content a reader came for. */
+.topbar{display:none}
+.burger{display:none}
+.scrim{display:none}
+
 @media (max-width:959px){
-  .sidestat{display:none}
-  .repo{display:none}
-  aside{padding:.75rem 1rem .6rem}
-  .brand{font-size:.98rem;margin-bottom:.1rem}
-  .brandsub{display:none}
-  nav{margin:0 -1rem;overflow-x:auto;overscroll-behavior-x:contain;
-    -webkit-overflow-scrolling:touch;scrollbar-width:none}
-  nav::-webkit-scrollbar{display:none}
-  nav ol{flex-wrap:nowrap;gap:.3rem;padding:.5rem 1rem 0;width:max-content}
-  nav a{white-space:nowrap;background:var(--raised);
-    box-shadow:0 0 0 1px var(--line);padding:.35rem .7rem;font-size:.8rem}
-  nav a .lucide{display:none}
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:1rem;
+    position:sticky;top:0;z-index:30;background:var(--bg);
+    border-bottom:1px solid var(--line);padding:.7rem 1.1rem}
+  .burger{display:inline-flex;align-items:center;gap:.45rem;padding:.42rem .7rem;
+    border:1px solid var(--line);border-radius:8px;background:var(--panel);
+    color:var(--ink);text-decoration:none;font-size:.82rem;font-weight:560}
+  .burger:hover{text-decoration:none;border-color:var(--link);color:var(--link)}
+
+  aside{position:fixed;inset:0 auto 0 0;width:min(19rem,82vw);z-index:50;
+    transform:translateX(-102%);transition:transform .22s ease;
+    background:var(--bg);border-right:1px solid var(--line);
+    overflow-y:auto;padding:1.4rem 1.2rem;box-shadow:0 0 0 100vmax transparent}
+  aside:target{transform:translateX(0);box-shadow:2px 0 24px rgba(0,0,0,.18)}
+  aside:target ~ .scrim{display:block;position:fixed;inset:0;z-index:40;
+    background:rgba(0,0,0,.38)}
+  .closer{display:flex;align-items:center;justify-content:center;width:2rem;
+    height:2rem;border:1px solid var(--line);border-radius:7px;color:var(--muted);
+    text-decoration:none;position:absolute;top:1.1rem;right:1.1rem;font-size:1.1rem;
+    line-height:1}
+  .closer:hover{color:var(--link);border-color:var(--link);text-decoration:none}
+  nav ol{display:block}
+  nav a{font-size:.9rem;padding:.5rem .6rem}
 }
 
 @media (min-width:960px){
   .shell{grid-template-columns:16rem minmax(0,1fr);gap:4rem}
   aside{position:sticky;top:0;height:100vh;overflow-y:auto;
-    padding:2.5rem 1.4rem 2rem 1.5rem;border-bottom:none;
-    border-right:1px solid var(--line)}
+    padding:2.5rem 1.4rem 2rem 1.5rem;border-right:1px solid var(--line);
+    background:var(--panel)}
+  .closer{display:none}
 }
-.brand{display:flex;align-items:center;gap:.55rem;font-weight:660;letter-spacing:-.02em;
-  font-size:1.05rem;margin-bottom:.15rem}
-.brand .lucide{color:var(--link)}
-.brandsub{color:var(--faint);font-size:.78rem;margin:0 0 .6rem;line-height:1.45}
-.sidestat{display:flex;gap:.9rem;margin:0 0 1.3rem;padding:.55rem 0;
-  border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
-.sidestat div{font-size:.72rem;color:var(--faint);line-height:1.35}
-.sidestat b{display:block;font-size:.94rem;color:var(--ink);font-weight:650;
-  font-variant-numeric:tabular-nums}
-nav ol{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:.15rem}
-@media (min-width:960px){nav ol{display:block}}
-nav{margin-bottom:1rem}
-/* A soft filled pill rather than a coloured left rail: the rail is the
-   generic pattern and reads as decoration, while a fill reads as a surface
-   the item actually occupies. Weight and ink carry the state, not hue. */
-nav a{display:flex;align-items:center;gap:.62rem;padding:.42rem .6rem;
-  border-radius:7px;color:var(--muted);text-decoration:none;font-size:.855rem;
-  line-height:1.3;transition:background .13s ease,color .13s ease}
-nav a:hover{background:var(--raised);color:var(--ink);text-decoration:none;
-  box-shadow:0 0 0 1px var(--line)}
-nav a .lucide{color:var(--faint);flex:none;transition:color .13s ease}
-nav a:hover .lucide{color:var(--ink)}
-section:target{scroll-margin-top:1rem}
-
 main{padding:0 1.5rem 6rem;min-width:0}
 @media (min-width:960px){main{padding:2.5rem 2rem 6rem 0}}
 
@@ -237,6 +224,9 @@ h1{font-size:clamp(2.3rem,4.4vw,3.1rem);margin:0 0 .5rem;letter-spacing:-.035em;
 .links{display:flex;flex-wrap:wrap;gap:.3rem 1.4rem;margin:.2rem 0 0;font-size:.875rem}
 .links a{display:inline-flex;align-items:center;gap:.4rem;text-decoration:none}
 .links a:hover{text-decoration:underline}
+.topbrand{display:inline-flex;align-items:center;gap:.4rem;font-weight:640;
+  font-size:.9rem;letter-spacing:-.01em}
+.topbrand .lucide{color:var(--link)}
 .repo{display:flex;align-items:center;gap:.5rem;padding-top:.9rem;
   border-top:1px solid var(--line);font-size:.8rem;color:var(--faint);
   text-decoration:none;font-family:var(--mono)}
@@ -272,6 +262,12 @@ a:hover{text-decoration:underline}
   /* Tables get an inset shadow hint that they scroll. */
   .scroll{margin-inline:-1.1rem;padding-inline:1.1rem}
   pre{font-size:.78rem}
+  /* Chart text lives in user units, so fitting a 720-unit viewBox into a
+     350px phone would render 11px labels at about 5px. Below this floor the
+     figure scrolls instead of shrinking further. */
+  figure{overflow-x:auto;margin-inline:-1.1rem;padding-inline:1.1rem}
+  .chart{min-width:30rem}
+  figcaption{min-width:0}
 }
 @media (max-width:380px){
   .kpis{grid-template-columns:1fr}
@@ -474,8 +470,8 @@ def _auroc_chart(artifacts: Path) -> str:
         '<figure class="viz">' + chart + "<figcaption>Shaded band is the 95% "
         "interval, resampling repositories rather than rows. Cut points are "
         "spaced evenly because they are ordered labels, not a continuous axis. "
-        "Each cut has a different population — only sessions that reached that "
-        "turn appear — so this is not one model tracked over time."
+        "Each cut has a different population, only sessions that reached that "
+        "turn appear, so this is not one model tracked over time."
         "</figcaption></figure>"
     )
 
@@ -519,7 +515,7 @@ def _calibration_chart(diag: dict[str, Any] | None) -> str:
     )
     return (
         '<figure class="viz">' + chart + "<figcaption>Brier score in "
-        "parentheses. Both curves are shown deliberately — the raw one is the "
+        "parentheses. Both curves are shown deliberately, the raw one is the "
         "instructive half, since it is what class weighting does to the output "
         "scale. Showing only the corrected version would hide why the step "
         "exists.</figcaption></figure>"
@@ -531,7 +527,7 @@ def _savings_charts(savings: dict[str, Any]) -> str:
 
     Previously one plot with two y-scales. A dual axis invents a relationship:
     where the two lines cross is an artefact of how the scales were aligned,
-    not something in the data — the exact misreading the caption was trying to
+    not something in the data, the exact misreading the caption was trying to
     warn against. Two panels state the trade-off without implying one.
     """
     points = [p for p in savings["points"] if p["false_positive_rate"] <= 0.30]
@@ -553,8 +549,8 @@ def _savings_charts(savings: dict[str, Any]) -> str:
     return (
         f'<figure class="viz"><div class="pair">{panels}</div>'
         "<figcaption>Two panels rather than two y-axes on one plot. The "
-        "quantities are not commensurable — one is tokens not spent, the other "
-        "is work destroyed — and overlaying them on shared axes would suggest a "
+        "quantities are not commensurable, one is tokens not spent, the other "
+        "is work destroyed, and overlaying them on shared axes would suggest a "
         "crossing point that is purely an artefact of scaling."
         "</figcaption></figure>"
     )
@@ -596,22 +592,31 @@ def build(artifacts: Path, out: Path) -> Path:
 
     # ---- header -----------------------------------------------------------
     # The nav is filled in after the body, from the sections that actually
-    # rendered — optional artifacts may be absent, and linking to a section
+    # rendered, optional artifacts may be absent, and linking to a section
     # that was skipped leaves a dead anchor.
     NAV_SLOT = "<!--NAV-->"
     parts.append(
         '<a class="skip" href="#question">Skip to content</a>'
+        '<div class="topbar">'
+        f'<a class="burger" href="#menu">{icon("menu", 16)}Contents</a>'
+        f'<span class="topbrand">{icon("flask", 16)}Averta</span>'
+        "</div>"
         '<div class="shell">'
-        f"<aside>{NAV_SLOT}</aside>"
+        f'<aside id="menu"><a class="closer" href="#" aria-label="Close">'
+        f"\u00d7</a>{NAV_SLOT}</aside>"
+        # Sibling, not a child: the open drawer carries a transform, which
+        # would become the containing block for a fixed-position descendant
+        # and collapse the scrim onto the drawer's own box.
+        '<a class="scrim" href="#" aria-hidden="true" tabindex="-1"></a>'
         "<main><header class=\"hero\">"
         f'<span class="eyebrow">{icon("flask", 13)}Pre-registered study</span>'
         "<h1>Averta</h1>"
-        '<p class="tagline">Predicting when an AI coding agent is about to fail — '
-        "from a <strong>2.1 KB model</strong> that scores a live session in "
+        '<p class="tagline">Predicting when an AI coding agent is about to fail, '
+        "using a <strong>2.1 KB model</strong> that scores a live session in "
         "<strong>0.18 ms</strong> on one CPU core.</p>"
         + _kpis(best, logistic_cost, savings)
         + '<p class="pitch">It recovers roughly <strong>half</strong> the token '
-        "savings reported for a 0.6B neural monitor — and still missed the bar "
+        "savings reported for a 0.6B neural monitor, and still missed the bar "
         "set for it before any model was trained. Both halves of that are the "
         "result, and the bar was never moved to fit.</p>"
         '<div class="cta">'
@@ -635,7 +640,7 @@ def build(artifacts: Path, out: Path) -> Path:
             "What this set out to test, and what it found.",
             "<p>A coding agent either resolves its task or it doesn't. A session "
             "heading nowhere keeps spending tokens that produce nothing, so "
-            "detecting that early is worth doing — but stopping a session that "
+            "detecting that early is worth doing. But stopping a session that "
             "would have recovered is worse than letting it run. That asymmetry is "
             "the whole problem: the value is in catching doomed sessions, the cost "
             "is in killing salvageable ones.</p>"
@@ -678,7 +683,7 @@ def build(artifacts: Path, out: Path) -> Path:
                 + _ext(DATASET, "SWE-Gym/OpenHands-Sampled-Trajectories")
                 + ". A survey of six public "
                 "trajectory corpora found it to be the <strong>only one carrying both "
-                "outcome classes</strong> — the others are supervised fine-tuning sets "
+                "outcome classes</strong>, the others are supervised fine-tuning sets "
                 "that store the agent's patch but never whether it worked.</p>"
                 "<p>Two properties shape everything downstream. The positive class is "
                 "rare, so metrics that tolerate imbalance are required. And "
@@ -701,26 +706,26 @@ def build(artifacts: Path, out: Path) -> Path:
             "Three constraints, each guarding against a specific way of fooling yourself.",
             "<h3>Prefix-only features</h3>"
             "<p>A feature computed at turn <em>t</em> reads <code>turns[0:t]</code> and "
-            "nothing else — never the total length, never the outcome. A test suite "
+            "nothing else, never the total length, never the outcome. A test suite "
             "shuffles, truncates and extends the unseen tail and asserts the feature "
             "vector is byte-identical, and checks that features at turn 6 are the same "
             "whether the session runs to 12 turns or 200.</p>"
             "<h3>Absolute turn indices</h3>"
             "<p>Evaluating at &ldquo;40% through the session&rdquo; requires knowing the "
             "total length, which is unavailable while a session is running. Evaluation "
-            "uses turns 3, 5, 10, 20 and 40. Each cut has a different population — only "
-            "sessions that reached that turn appear — and the resolve rate is reported "
+            "uses turns 3, 5, 10, 20 and 40. Each cut has a different population, since only "
+            "sessions that reached that turn appear, and the resolve rate is reported "
             "per cut so the shift stays visible.</p>"
             "<h3>Repository-grouped splits</h3>"
             "<p>Every row from a repository lands in one fold. Rows sharing a codebase "
             "are not independent, so splitting by row would let a model memorise a "
             "repository and be rewarded for it. Confidence intervals resample "
-            "repositories rather than rows for the same reason — row-level bootstrap "
+            "repositories rather than rows for the same reason, row-level bootstrap "
             "reports intervals that are too narrow under clustering.</p>"
             "<h3>Polarity</h3>"
             "<p>The positive class is <strong>failure</strong>, so the false positive "
             "rate means &ldquo;sessions that would have resolved but were flagged&rdquo; "
-            "— the quantity worth constraining. Average precision is reported on the "
+            "- the quantity worth constraining. Average precision is reported on the "
             "minority class instead, with its polarity named. Accuracy is never "
             "reported: at an 89% failure rate, always predicting failure scores 0.89 and "
             "is useless.</p>",
@@ -753,29 +758,29 @@ def build(artifacts: Path, out: Path) -> Path:
             "Both reported. Identical criteria for each.",
             "<p><strong>Attempt 1</strong> used 23 aggregate counts over the prefix. "
             "AUROC 0.668, recall 0.155. Permutation importance showed one feature "
-            "dominating — <code>n_repeated_calls</code>, a flat count of tool calls "
-            "reissued with byte-identical arguments — while every error-based feature "
+            "dominating, <code>n_repeated_calls</code>, a flat count of tool calls "
+            "reissued with byte-identical arguments, while every error-based feature "
             "was negligible.</p>"
             "<p>That pointed at <strong>ordering</strong> as the missing ingredient. A "
             "count knows an action recurred; it cannot express that the agent is cycling "
             "A-B-A-B, or how far back it reached to repeat itself.</p>"
             "<p><strong>Attempt 2</strong> added 10 sequence-structure features. Recall "
-            "rose from 0.155 to 0.191 and AUROC from 0.668 to 0.677 — real movement on "
+            "rose from 0.155 to 0.191 and AUROC from 0.668 to 0.677, real movement on "
             "exactly the failing criterion, but not enough to clear it.</p>",
             _table(
                 ["feature", "attempt 1", "attempt 2"],
                 [
-                    ["<code>distinct_action_ratio</code>", "—", "<strong>0.159</strong>"],
-                    ["<code>novelty_rate_recent</code>", "—", "<strong>0.153</strong>"],
+                    ["<code>distinct_action_ratio</code>", "-", "<strong>0.159</strong>"],
+                    ["<code>novelty_rate_recent</code>", "-", "<strong>0.153</strong>"],
                     ["<code>n_errors</code>", "0.023", "0.084"],
-                    ["<code>action_bigram_repeat_max</code>", "—", "0.078"],
+                    ["<code>action_bigram_repeat_max</code>", "-", "0.078"],
                     ["<code>n_repeated_calls</code>", "<strong>0.198</strong>", "0.030"],
                 ],
                 [""] * 5,
                 "AUROC drop when the feature is shuffled, under the same grouped folds.",
             ),
             "<p><code>n_repeated_calls</code> collapsed once ordering was represented "
-            "properly — it had been a proxy for structure it could not express. The two "
+            "properly, it had been a proxy for structure it could not express. The two "
             "strongest features now both measure <strong>declining action novelty</strong>.</p>"
             '<p class="flag">{FLAG_ICON}Modelling stopped after two attempts. The gains were real '
             "but shrinking, the mechanism is understood, and a third round of feature "
@@ -804,14 +809,14 @@ def build(artifacts: Path, out: Path) -> Path:
                         highlight=0,
                     ),
                     "AUROC lost when each feature is shuffled within the held-out "
-                    "fold. One series, so one colour — the bar length already "
+                    "fold. One series, so one colour, the bar length already "
                     "encodes magnitude.",
                 ),
                 _table(
                     ["feature", "AUROC drop when shuffled"], rows, [""] * len(rows)
                 ),
                 "<p>The prior expectation was that a recurring error signature would "
-                "dominate. It is close to worthless in isolation — AUROC 0.521 alone. "
+                "dominate. It is close to worthless in isolation, AUROC 0.521 alone. "
                 "Failure is predicted by <strong>declining action novelty</strong>: the "
                 "share of actions that are distinct, and the share of recent actions "
                 "never issued before. A session heading nowhere is one that has stopped "
@@ -868,7 +873,7 @@ def build(artifacts: Path, out: Path) -> Path:
             "<p>Every model is fitted with class weighting, which is correct for ranking "
             "but leaves the output on a re-balanced scale. A raw score of 0.25 "
             "corresponded to an observed failure rate near 0.70. Rank-based metrics are "
-            "unaffected — but any number shown to a person has to mean what it says.</p>"
+            "unaffected, but any number shown to a person has to mean what it says.</p>"
             "<p>Isotonic regression fitted on <strong>out-of-fold</strong> scores "
             "corrects it, moving the Brier score from 0.2323 to 0.0826. Fitting the "
             "calibrator on training predictions would have learned the model's own "
@@ -906,14 +911,14 @@ def build(artifacts: Path, out: Path) -> Path:
                     classes,
                     "Highlighted row is the operating point nearest a 5% false-positive budget.",
                 ),
-                "<p>At a comparable budget — 4.7% against the paper's 5% target — this "
+                "<p>At a comparable budget, 4.7% against the paper's 5% target, this "
                 "reaches <strong>8.4% estimated token savings</strong> where the 0.6B "
                 "neural monitor reports 14.6&ndash;20.4%. Roughly half the value, at a "
                 "fraction of the size.</p>"
                 '<p class="flag">{FLAG_ICON}Tokens are <strong>estimated</strong> from content '
                 "length; the corpus records no token counts. Savings count only what "
                 "would have been spent after the cut. Sessions wrongly terminated are "
-                "never netted off the savings — the two are not commensurable and a "
+                "never netted off the savings, the two are not commensurable and a "
                 "single &ldquo;net&rdquo; figure would let the harm disappear into an "
                 "aggregate.</p>",
                 _savings_charts(savings),
@@ -938,14 +943,14 @@ def build(artifacts: Path, out: Path) -> Path:
             _section(
                 "transfer",
                 "Cross-scaffold transfer",
-                "Planned as an AUROC comparison. Not reported — the sample "
+                "Planned as an AUROC comparison. Not reported, the sample "
                 "cannot support one.",
                 f"<p>The plan was to train on OpenHands trajectories and test on "
                 f"hand-labelled Claude Code sessions. Only {drift['n_local']} local "
                 "sessions are long enough and none carry outcome labels, so a transfer "
                 "AUROC would be noise presented as a result.</p>"
                 "<p>What is measurable without labels is whether the features compute "
-                "comparably at all — a prerequisite for transfer rather than a "
+                "comparably at all, a prerequisite for transfer rather than a "
                 "substitute for measuring it.</p>",
                 _table(
                     ["feature", "corpus", "local", "std diff"], rows, [""] * len(rows)
@@ -953,13 +958,13 @@ def build(artifacts: Path, out: Path) -> Path:
                 "<p>Every comparable feature shifts by more than 1.3 standard "
                 "deviations and some fall outside the training range entirely. Claude "
                 "Code emits more assistant turns per tool call than OpenHands, because "
-                "thinking blocks become their own turns — a &ldquo;turn&rdquo; is not the "
+                "thinking blocks become their own turns, a &ldquo;turn&rdquo; is not the "
                 "same unit across scaffolds. Cross-scaffold accuracy is therefore "
                 "<strong>unmeasured</strong>, and the tool labels its output indicative "
                 "in every code path.</p>"
                 '<p class="flag">{FLAG_ICON}This check caught a real bug. Two features reported '
                 "exactly 0.00 on sessions full of edits, because edit detection was keyed "
-                "to one tool vocabulary. Not a slightly worse score — a confident zero "
+                "to one tool vocabulary. Not a slightly worse score, a confident zero "
                 "for something that happened dozens of times.</p>",
             )
         )
@@ -1001,15 +1006,15 @@ def build(artifacts: Path, out: Path) -> Path:
             "averta explain      # analyse your most recent coding session\n"
             "averta sessions     # list local sessions\n"
             "averta site         # rebuild this page</code></pre>"
-            "<p>Those work immediately — the trained model is committed. Reproducing the "
+            "<p>Those work immediately, the trained model is committed. Reproducing the "
             "study needs the corpus, which is a 12-minute download:</p>"
             "<pre><code>averta ingest &amp;&amp; averta features\n"
             "averta train        # cross-validate and apply the gate\n"
             "averta diagnose     # importance and inference cost\n"
             "averta savings      # savings against harm\n"
             "averta figures      # the plots on this page</code></pre>"
-            "<p><code>averta explain</code> separates what is <strong>measured</strong> — "
-            "recurring errors, reissued calls, clustered repetition, exact token counts — "
+            "<p><code>averta explain</code> separates what is <strong>measured</strong>, "
+            "recurring errors, reissued calls, clustered repetition, exact token counts, "
             "from what is <strong>estimated</strong> by a model that did not clear its "
             "gate. The measured half needs no model and is as reliable as the transcript. "
             "An MCP server exposes the same analysis to a coding agent over stdio.</p>"
@@ -1021,7 +1026,7 @@ def build(artifacts: Path, out: Path) -> Path:
     generated = datetime.now(UTC).strftime("%d %B %Y")
     parts.append(
         "<footer>"
-        f"<p>Generated {generated} from committed artifacts — every figure and table "
+        f"<p>Generated {generated} from committed artifacts, every figure and table "
         "on this page is produced by <code>averta site</code> from JSON written by the "
         "pipeline, so it cannot drift out of sync with the results.</p>"
         "<p>Reproduces " + _ext(PAPER, "arXiv:2608.03222") + ". MIT licensed; the "
@@ -1052,8 +1057,8 @@ def build(artifacts: Path, out: Path) -> Path:
         "</div>"
     )
     # The hero already carries the primary "View source" call to action.
-    # Repeating it verbatim here would be noise, so this is an identity line —
-    # the repository handle — rather than a second button with the same label.
+    # Repeating it verbatim here would be noise, so this is an identity line -
+    # the repository handle, rather than a second button with the same label.
     outbound = _ext(
         REPO,
         f'{icon("github", 15)}<span>mayurbijarniya/<b>averta</b></span>',
@@ -1069,7 +1074,7 @@ def build(artifacts: Path, out: Path) -> Path:
         '<meta name=viewport content="width=device-width,initial-scale=1">'
         '<meta name=description content="CPU-native failure prediction for AI coding '
         'agents: a pre-registered evaluation with a negative result.">'
-        "<title>Averta — CPU-native failure prediction for AI coding agents</title>"
+        "<title>Averta, CPU-native failure prediction for AI coding agents</title>"
         f"<style>{STYLE}</style></head><body>"
         f"{body}"
         "</body></html>"
