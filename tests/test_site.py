@@ -152,11 +152,27 @@ class TestBuild:
         assert parser.stack == []
 
     def test_no_external_resources(self, artifacts, tmp_path):
-        # The page must work offline and from a file:// URL.
+        # Outbound *links* are fine and wanted; what must not exist is a
+        # fetched resource, which would break the page offline. The previous
+        # version of this test was vacuous and asserted nothing.
         text = build(artifacts, tmp_path / "index.html").read_text()
-        assert "http://" not in text
-        assert "https://" not in text or "modelcontextprotocol" not in text
         assert "<script" not in text
+        assert "<link" not in text
+        for tag in re.findall(r"<(?:img|iframe|source|embed)\b[^>]*>", text):
+            assert "http" not in tag, f"fetches an external resource: {tag}"
+        assert not re.search(r'@import|url\(\s*["\']?http', text)
+
+    def test_links_to_the_source(self, artifacts, tmp_path):
+        # A reader who arrives at the results must be able to reach the code.
+        text = build(artifacts, tmp_path / "index.html").read_text()
+        assert "github.com" in text
+        assert "MODEL_CARD" in text
+
+    def test_no_hard_coded_test_count(self, artifacts, tmp_path):
+        # A count baked into the page goes stale the moment a test is added,
+        # and did: the hero claimed 269 while the suite was at 272.
+        text = build(artifacts, tmp_path / "index.html").read_text()
+        assert not re.search(r"\d{2,4}\s+tests", text)
 
     def test_charts_are_inline_svg(self, full_artifacts, tmp_path):
         # No raster figures: the page must carry its own charts so it themes

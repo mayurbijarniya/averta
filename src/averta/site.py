@@ -31,6 +31,7 @@ from averta.charts import (
 from averta.icons import SECTION_ICONS, icon
 
 PAPER = "https://arxiv.org/abs/2608.03222"
+REPO = "https://github.com/mayurbijarniya/averta"
 DATASET = "https://huggingface.co/datasets/SWE-Gym/OpenHands-Sampled-Trajectories"
 
 STYLE = """
@@ -152,6 +153,13 @@ figcaption{color:var(--faint);font-size:.815rem;margin-top:.5rem;max-width:46rem
 .pair{display:grid;gap:.4rem}
 @media (min-width:900px){.pair{grid-template-columns:1fr 1fr}}
 
+.links{display:flex;flex-wrap:wrap;gap:.3rem 1.4rem;margin:.2rem 0 0;font-size:.875rem}
+.links a{display:inline-flex;align-items:center;gap:.4rem;text-decoration:none}
+.links a:hover{text-decoration:underline}
+.out{display:flex;align-items:center;gap:.5rem;margin-top:1.2rem;padding:.4rem .6rem;
+  border-radius:7px;font-size:.855rem;color:var(--muted);text-decoration:none;
+  border:1px solid var(--line)}
+.out:hover{color:var(--accent);border-color:var(--accent);text-decoration:none}
 .note{color:var(--faint);font-size:.855rem;max-width:46rem}
 .flag{display:flex;gap:.6rem;border-left:2px solid var(--line);padding:.1rem 0 .1rem .9rem;
   color:var(--muted);font-size:.885rem;margin:1.1rem 0;max-width:46rem}
@@ -440,16 +448,24 @@ def build(artifacts: Path, out: Path) -> Path:
         f"<aside>{NAV_SLOT}</aside>"
         "<main><header>"
         "<h1>Averta</h1>"
-        '<p class="tagline">CPU-native failure prediction for AI coding agents</p>'
-        '<p class="question">Can a lightweight, CPU-native model predict when a '
-        "coding agent is heading toward failure early enough to save tokens — "
-        "without killing sessions that would have recovered?</p>"
+        '<p class="tagline">Predicting when an AI coding agent is about to fail — '
+        "from a 2.1 KB model that scores a live session in 0.18 ms on one CPU "
+        "core.</p>"
+        '<p class="question">It recovers roughly <strong>half</strong> the token '
+        "savings reported for a 0.6B neural monitor, and still missed the bar "
+        "that was set for it before any model was trained. Both halves of that "
+        "are the result.</p>"
         '<div class="badges">'
-        f'<span class="badge warn">{icon("cross", 14)}Gate not met</span>'
+        f'<span class="badge warn">{icon("cross", 14)}Pre-registered gate not met</span>'
         f'<span class="badge">{icon("branch", 14)}Two disclosed attempts</span>'
-        f'<span class="badge">{icon("check", 14)}269 tests</span>'
         f'<span class="badge">{icon("cpu", 14)}2.1 KB · 0.18 ms</span>'
-        "</div></header>"
+        "</div>"
+        '<p class="links">'
+        f'<a href="{REPO}">{icon("terminal", 15)}Source and reproduction steps</a>'
+        f'<a href="{REPO}/blob/main/MODEL_CARD.md">{icon("alert", 15)}'
+        "Model card — limits and intended use</a>"
+        f'<a href="{PAPER}">{icon("flask", 15)}The paper this reproduces</a>'
+        "</p></header>"
     )
 
     # ---- the question -----------------------------------------------------
@@ -870,9 +886,12 @@ def build(artifacts: Path, out: Path) -> Path:
         f'<div class="brand">{icon("flask", 19)}Averta</div>'
         '<p class="brandsub">CPU-native failure prediction<br>for AI coding agents</p>'
     )
+    outbound = (
+        f'<a class="out" href="{REPO}">{icon("terminal", 15)}View source</a>'
+    )
     body = body.replace(
         NAV_SLOT,
-        f"{brand}<nav aria-label=Contents><ol>{nav_items}</ol></nav>",
+        f"{brand}<nav aria-label=Contents><ol>{nav_items}</ol></nav>{outbound}",
     )
 
     document = (
