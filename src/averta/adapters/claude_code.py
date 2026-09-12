@@ -29,7 +29,13 @@ from pathlib import Path
 from typing import Any
 
 from averta.features.view import TurnView
-from averta.normalize import digest, error_signature, is_valid_json, looks_like_error
+from averta.normalize import (
+    digest,
+    error_signature,
+    is_user_rejection,
+    is_valid_json,
+    looks_like_error,
+)
 
 TRANSCRIPT_ROOT = Path.home() / ".claude" / "projects"
 
@@ -45,7 +51,13 @@ class ClaudeCodeTranscript:
     turns: list[TurnView] = field(default_factory=list)
     input_tokens: int = 0
     output_tokens: int = 0
+    cache_read_tokens: int = 0
+    cache_write_tokens: int = 0
     malformed_lines: int = 0
+    user_rejections: int = 0
+    # Last cost snapshot written by the editor. Lags the live session; a lower
+    # bound rather than the final figure.
+    cost_usd_snapshot: float | None = None
 
     @property
     def repo(self) -> str:
@@ -53,7 +65,23 @@ class ClaudeCodeTranscript:
 
     @property
     def total_tokens(self) -> int:
-        return self.input_tokens + self.output_tokens
+        """All input and output, cached or not.
+
+        `usage.input_tokens` counts only uncached input. Under prompt caching
+        that is a rounding error — one record showed `input_tokens: 2` beside
+        `cache_read_input_tokens: 18,641`. Summing the plain field alone
+        undercounted a real session's input by three orders of magnitude.
+        """
+        return (
+            self.input_tokens
+            + self.output_tokens
+            + self.cache_read_tokens
+            + self.cache_write_tokens
+        )
+
+    @property
+    def total_input_tokens(self) -> int:
+        return self.input_tokens + self.cache_read_tokens + self.cache_write_tokens
 
     def __len__(self) -> int:
         return len(self.turns)
@@ -113,6 +141,17 @@ def read_transcript(path: Path) -> ClaudeCodeTranscript:
                 transcript.malformed_lines += 1
                 continue
 
+            # Cost is recorded directly by the editor, which is better than
+            # deriving it — that would need current per-model pricing and the
+            # cache-read discount. But the record is a periodic snapshot, not
+            # a running total: on a multi-hour session the last one carried
+            # `totalDuration` of 876s. Treat it as a lower bound.
+            if record.get("type") == "cost-state":
+                cost = record.get("totalCostUSD")
+                if isinstance(cost, int | float):
+                    transcript.cost_usd_snapshot = float(cost)
+                continue
+
             if record.get("type") not in CONVERSATION_TYPES:
                 continue
 
@@ -125,9 +164,18 @@ def read_transcript(path: Path) -> ClaudeCodeTranscript:
             if isinstance(usage, dict):
                 transcript.input_tokens += int(usage.get("input_tokens") or 0)
                 transcript.output_tokens += int(usage.get("output_tokens") or 0)
+                transcript.cache_read_tokens += int(
+                    usage.get("cache_read_input_tokens") or 0
+                )
+                transcript.cache_write_tokens += int(
+                    usage.get("cache_creation_input_tokens") or 0
+                )
 
-            for turn in _turns_from_record(record, blocks, turn_index, step_index):
+            for turn, rejected in _turns_from_record(
+                record, blocks, turn_index, step_index
+            ):
                 transcript.turns.append(turn)
+                transcript.user_rejections += int(rejected)
                 turn_index += 1
                 if turn.step_index is not None:
                     step_index += 1
@@ -140,7 +188,8 @@ def _turns_from_record(
     blocks: list[dict[str, Any]],
     turn_index: int,
     step_index: int,
-) -> Iterator[TurnView]:
+) -> Iterator[tuple[TurnView, bool]]:
+    """Yields each turn with a flag for whether it was a user rejection."""
     kind = record.get("type")
     text = _text_of(blocks)
     tool_uses = [block for block in blocks if block.get("type") == "tool_use"]
@@ -153,18 +202,21 @@ def _turns_from_record(
             tool_name = tool_uses[0].get("name")
             tool_input = json.dumps(tool_uses[0].get("input"), sort_keys=True)
 
-        yield TurnView(
-            turn_index=turn_index,
-            role="assistant",
-            step_index=step_index,
-            tool_name=tool_name,
-            tool_input=tool_input,
-            tool_input_hash=digest(tool_input),
-            tool_input_bad=bool(tool_input) and not is_valid_json(tool_input),
-            n_tool_calls=len(tool_uses),
-            content_chars=len(text),
-            is_error=False,
-            error_signature=None,
+        yield (
+            TurnView(
+                turn_index=turn_index,
+                role="assistant",
+                step_index=step_index,
+                tool_name=tool_name,
+                tool_input=tool_input,
+                tool_input_hash=digest(tool_input),
+                tool_input_bad=bool(tool_input) and not is_valid_json(tool_input),
+                n_tool_calls=len(tool_uses),
+                content_chars=len(text),
+                is_error=False,
+                error_signature=None,
+            ),
+            False,
         )
         return
 
@@ -175,37 +227,50 @@ def _turns_from_record(
             # heuristic only when it is absent.
             flagged = block.get("is_error")
             explicit = flagged is not None
-            is_error = bool(flagged) if explicit else looks_like_error(body)
-            yield TurnView(
-                turn_index=turn_index,
-                role="tool",
-                step_index=None,
-                tool_name=None,
-                tool_input=None,
-                tool_input_hash=None,
-                tool_input_bad=False,
-                n_tool_calls=0,
-                content_chars=len(body),
-                is_error=is_error,
-                error_signature=(
-                    error_signature(body, force=explicit) if is_error else None
+            failed = bool(flagged) if explicit else looks_like_error(body)
+
+            # A declined tool call is flagged as an error by the editor, but
+            # it is a human decision, not the agent failing. Counting it would
+            # make a closely supervised session look like a struggling one.
+            rejected = failed and is_user_rejection(body)
+            is_error = failed and not rejected
+
+            yield (
+                TurnView(
+                    turn_index=turn_index,
+                    role="tool",
+                    step_index=None,
+                    tool_name=None,
+                    tool_input=None,
+                    tool_input_hash=None,
+                    tool_input_bad=False,
+                    n_tool_calls=0,
+                    content_chars=len(body),
+                    is_error=is_error,
+                    error_signature=(
+                        error_signature(body, force=explicit) if is_error else None
+                    ),
                 ),
+                rejected,
             )
             turn_index += 1
         return
 
-    yield TurnView(
-        turn_index=turn_index,
-        role="user" if kind == "user" else "system",
-        step_index=None,
-        tool_name=None,
-        tool_input=None,
-        tool_input_hash=None,
-        tool_input_bad=False,
-        n_tool_calls=0,
-        content_chars=len(text),
-        is_error=False,
-        error_signature=None,
+    yield (
+        TurnView(
+            turn_index=turn_index,
+            role="user" if kind == "user" else "system",
+            step_index=None,
+            tool_name=None,
+            tool_input=None,
+            tool_input_hash=None,
+            tool_input_bad=False,
+            n_tool_calls=0,
+            content_chars=len(text),
+            is_error=False,
+            error_signature=None,
+        ),
+        False,
     )
 
 

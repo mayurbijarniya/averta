@@ -99,6 +99,25 @@ def scrub(text: str) -> str:
 
 HEAD_WINDOW = 300
 
+# A human declining a tool call is not an agent failure. Claude Code sets
+# `is_error` on these, and counting them inflates every error feature — it
+# would make a closely supervised session look like a struggling one.
+REJECTION_MARKERS = (
+    "the user doesn't want to proceed",
+    "the user doesn't want to take this action",
+    "tool use was rejected",
+    "request interrupted by user",
+    "user rejected",
+    "operation cancelled by user",
+)
+
+
+def is_user_rejection(content: str) -> bool:
+    if not content:
+        return False
+    head = content[:HEAD_WINDOW].lower()
+    return any(marker in head for marker in REJECTION_MARKERS)
+
 
 def looks_like_error(content: str) -> bool:
     """Detect a failed observation.
