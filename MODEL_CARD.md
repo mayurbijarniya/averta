@@ -104,9 +104,9 @@ scores 0.89 and is useless.
 ### Calibration
 
 Class weighting is necessary for ranking but leaves raw scores on a
-re-balanced scale, a raw 0.25 corresponded to an observed failure rate near
-0.70. An isotonic layer fitted on **out-of-fold** predictions corrects this,
-moving the Brier score from **0.2323 to 0.0826**.
+re-balanced scale, a raw 0.35 corresponded to an observed failure rate near
+0.82. An isotonic layer fitted on **out-of-fold** predictions corrects this,
+moving the Brier score from **0.2268 to 0.0948**.
 
 Because most sessions in the corpus fail, an absolute probability carries
 little information on its own. Output always shows the corpus base rate

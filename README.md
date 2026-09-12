@@ -392,7 +392,7 @@ fail, so 89.7% sounds alarming until you see that 90.6% is typical. Reporting
 the probability alone hid the fact that the model had no real signal. Scores are
 isotonically calibrated on out-of-fold predictions, because class weighting is
 needed for ranking but leaves raw scores on a re-balanced scale, that fix moved
-the Brier score from 0.2323 to 0.0826.
+the Brier score from 0.2268 to 0.0948.
 
 **Long sessions are truncated, not extrapolated.** Features are cumulative over
 the prefix, so a 900-turn session scored against a model fitted on prefixes of
