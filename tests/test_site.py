@@ -125,24 +125,36 @@ class TestBuild:
 
     def test_reports_the_gate_failure(self, artifacts, tmp_path):
         text = build(artifacts, tmp_path / "index.html").read_text()
-        assert "not met" in text
-        assert "FAIL" in text
+        assert "not met" in text.lower()
+        assert "NOT MET" in text
 
     def test_baselines_are_marked_as_such(self, artifacts, tmp_path):
         text = build(artifacts, tmp_path / "index.html").read_text()
-        assert 'class="baseline"' in text
+        assert 'class="base"' in text
 
     def test_best_model_is_highlighted(self, artifacts, tmp_path):
         text = build(artifacts, tmp_path / "index.html").read_text()
-        assert 'class="highlight"' in text
+        assert 'class="pick"' in text
 
     def test_survives_missing_optional_artifacts(self, artifacts, tmp_path):
         # Only the gate file exists; every other section must be skipped
         # rather than crash or render an empty shell.
         text = build(artifacts, tmp_path / "index.html").read_text()
-        assert "Results at the gate" in text
-        assert "Savings against harm" not in text
-        assert "Cross-scaffold transfer" not in text
+        assert '<section id="results"' in text
+        assert '<section id="savings"' not in text
+        assert '<section id="transfer"' not in text
+
+    def test_nav_never_links_to_a_skipped_section(self, artifacts, tmp_path):
+        # Optional artifacts are absent here, so those sections do not render.
+        # Linking to them anyway would leave dead anchors.
+        text = build(artifacts, tmp_path / "index.html").read_text()
+        for anchor in re.findall(r'<a href="#([a-z-]+)"', text):
+            assert f'id="{anchor}"' in text, f"nav links to missing #{anchor}"
+
+    def test_nav_covers_every_rendered_section(self, artifacts, tmp_path):
+        text = build(artifacts, tmp_path / "index.html").read_text()
+        for anchor in re.findall(r'<section id="([a-z-]+)"', text):
+            assert f'href="#{anchor}"' in text, f"#{anchor} missing from nav"
 
     def test_creates_parent_directories(self, artifacts, tmp_path):
         out = build(artifacts, tmp_path / "nested" / "deep" / "index.html")
