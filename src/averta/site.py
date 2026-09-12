@@ -91,7 +91,6 @@ body{
     text-decoration:none;position:absolute;top:1.1rem;right:1.1rem;font-size:1.1rem;
     line-height:1}
   .closer:hover{color:var(--link);border-color:var(--link);text-decoration:none}
-  nav ol{display:block}
   nav a{font-size:.9rem;padding:.5rem .6rem}
 }
 
@@ -105,17 +104,35 @@ body{
 main{padding:0 1.5rem 6rem;min-width:0}
 @media (min-width:960px){main{padding:2.5rem 2rem 6rem 0}}
 
+/* ---- sidebar contents --------------------------------------------------- */
+.brand{display:flex;align-items:center;gap:.55rem;font-weight:660;letter-spacing:-.02em;
+  font-size:1.05rem;margin-bottom:.15rem}
+.brand .lucide{color:var(--link)}
+.brandsub{color:var(--faint);font-size:.78rem;margin:0 0 .6rem;line-height:1.45}
+.sidestat{display:flex;gap:.9rem;margin:0 0 1.3rem;padding:.55rem 0;
+  border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.sidestat div{font-size:.72rem;color:var(--faint);line-height:1.35}
+.sidestat b{display:block;font-size:.94rem;color:var(--ink);font-weight:650;
+  font-variant-numeric:tabular-nums}
+nav{margin-bottom:1rem}
+/* Vertical at every width. The drawer replaced the horizontal strip that
+   once made this a wrapping flex row. */
+nav ol{list-style:none;margin:0;padding:0;display:block}
+/* A soft filled pill rather than a coloured left rail: the rail is the
+   generic pattern and reads as decoration, while a fill reads as a surface
+   the item actually occupies. Weight and ink carry the state, not hue. */
+nav a{display:flex;align-items:center;gap:.62rem;padding:.42rem .6rem;
+  border-radius:7px;color:var(--muted);text-decoration:none;font-size:.855rem;
+  line-height:1.3;transition:background .13s ease,color .13s ease}
+nav a:hover{background:var(--raised);color:var(--ink);text-decoration:none;
+  box-shadow:0 0 0 1px var(--line)}
+nav a .lucide{color:var(--faint);flex:none;transition:color .13s ease}
+nav a:hover .lucide{color:var(--ink)}
+section:target{scroll-margin-top:1rem}
+
 header{padding:1rem 0 .5rem}
 h1{font-size:2.15rem;margin:0 0 .35rem;letter-spacing:-.03em;font-weight:680}
 .tagline{font-size:1.02rem;color:var(--muted);margin:0 0 1.4rem;max-width:44rem}
-.question{font-size:1rem;color:var(--ink);border-left:2px solid var(--link);
-  padding:.15rem 0 .15rem 1rem;margin:0 0 1.6rem;max-width:44rem}
-.badges{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.5rem}
-.badge{display:inline-flex;align-items:center;gap:.35rem;font-size:.735rem;font-weight:560;
-  padding:.25rem .6rem;border-radius:6px;border:1px solid var(--line);color:var(--muted);
-  background:var(--panel)}
-.badge.warn{border-color:color-mix(in srgb,var(--warn) 40%,var(--line));color:var(--warn);
-  background:color-mix(in srgb,var(--warn) 7%,transparent)}
 
 section{padding-top:2.75rem;scroll-margin-top:1rem}
 h2{display:flex;align-items:center;gap:.55rem;font-size:1.22rem;margin:0 0 .25rem;
@@ -152,6 +169,9 @@ thead th{color:var(--faint);font-weight:620;font-size:.715rem;text-transform:upp
 tbody tr:hover td{background:var(--panel)}
 tbody tr.pick td{background:var(--panel);font-weight:620}
 tbody tr.base td{color:var(--faint)}
+/* The unmet criterion in the gate table. The row tint is a third channel
+   after the icon and the word, never the only one. */
+tbody tr.fail td{background:color-mix(in srgb,var(--warn) 6%,transparent)}
 td .lucide{vertical-align:-3px;margin-right:.25rem}
 .ok{color:var(--ok);font-weight:600;white-space:nowrap}
 .no{color:var(--warn);font-weight:680;white-space:nowrap}
@@ -221,9 +241,6 @@ h1{font-size:clamp(2.3rem,4.4vw,3.1rem);margin:0 0 .5rem;letter-spacing:-.035em;
 .btn.primary:hover{opacity:.9;color:#fff}
 .btn .lucide{flex:none}
 
-.links{display:flex;flex-wrap:wrap;gap:.3rem 1.4rem;margin:.2rem 0 0;font-size:.875rem}
-.links a{display:inline-flex;align-items:center;gap:.4rem;text-decoration:none}
-.links a:hover{text-decoration:underline}
 .topbrand{display:inline-flex;align-items:center;gap:.4rem;font-weight:640;
   font-size:.9rem;letter-spacing:-.01em}
 .topbrand .lucide{color:var(--link)}
@@ -273,7 +290,7 @@ a:hover{text-decoration:underline}
   .kpis{grid-template-columns:1fr}
   h1{font-size:1.8rem}
 }
-@media print{aside,.badges{display:none}body{font-size:10.5pt}section{page-break-inside:avoid}}
+@media print{aside,.topbar{display:none}body{font-size:10.5pt}section{page-break-inside:avoid}}
 """
 
 BASELINES = {"majority", "turn_index_only", "error_repeat_only"}

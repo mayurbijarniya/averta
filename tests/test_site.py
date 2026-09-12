@@ -162,6 +162,21 @@ class TestBuild:
             assert "http" not in tag, f"fetches an external resource: {tag}"
         assert not re.search(r'@import|url\(\s*["\']?http', text)
 
+    def test_every_class_in_the_markup_is_styled(self, artifacts, tmp_path):
+        # A layout rewrite once deleted the whole sidebar block while the
+        # markup kept emitting .brand, .sidestat and the nav pills, so the
+        # sidebar rendered as a raw numbered list of default-blue links.
+        # Nothing failed: unstyled HTML is still valid HTML.
+        text = build(artifacts, tmp_path / "index.html").read_text()
+        style = re.search(r"<style>(.*?)</style>", text, re.S).group(1)
+        used = {
+            name
+            for attr in re.findall(r'class="([^"]+)"', text)
+            for name in attr.split()
+        }
+        unstyled = {name for name in used if f".{name}" not in style}
+        assert unstyled == set(), f"emitted but never styled: {sorted(unstyled)}"
+
     def test_no_em_dashes(self, artifacts, tmp_path):
         text = build(artifacts, tmp_path / "index.html").read_text()
         assert "—" not in text
