@@ -1,7 +1,8 @@
 # Averta
 
-**Catching AI coding agents that are stuck and burning tokens, using a 2.1 KB
-CPU model in place of a 0.6B neural one.**
+**Early failure prediction for AI coding agents, evaluated on 5,976 recorded
+sessions. A 2.1 KB CPU model recovers about half the token savings of a 0.6B
+neural monitor.**
 
 ![python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![license](https://img.shields.io/badge/license-MIT-lightgrey)

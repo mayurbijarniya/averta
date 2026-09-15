@@ -693,14 +693,21 @@ def _figures(
     # Composed here so the prose below never has to test for a missing key, and
     # so an absent measurement produces an honest sentence rather than a blank.
     measured_cost = "size" in out and "latency" in out
-    # The size only reads as surprising beside the thing it replaces, so the
-    # baseline sits in the same sentence rather than three sections down.
-    out["hero_cost"] = (
-        f"using a <strong>{out['size']} CPU model</strong> in place of a 0.6B "
-        f"neural one. It scores a live session in <strong>{out['latency']}</strong> "
-        "on one core."
+    # Two sentences doing two jobs. The first states the scope, because a model
+    # size alone invites a reader to mistake the artifact for the project. The
+    # second states the result, where the size reads as a finding rather than
+    # as a measure of the effort behind it.
+    scope = (
+        f"Early failure prediction for AI coding agents, evaluated on "
+        f"{out['sessions']} recorded sessions."
+        if "sessions" in out
+        else "Early failure prediction for AI coding agents."
+    )
+    out["hero_line"] = (
+        f"{scope} A <strong>{out['size']} CPU model</strong> recovers about half "
+        "the token savings of a 0.6B neural monitor."
         if measured_cost
-        else "using a compact CPU model in place of a 0.6B neural one."
+        else scope
     )
     out["establish_cost"] = (
         f"a {out['size'].replace(' ', '&nbsp;')} linear model at "
@@ -778,13 +785,16 @@ def build(artifacts: Path, out: Path) -> Path:
         "<main><header class=\"hero\">"
         f'<span class="eyebrow">{icon("flask", 13)}Pre-registered study</span>'
         "<h1>Averta</h1>"
-        '<p class="tagline">Catching AI coding agents that are stuck and burning '
-        f"tokens, {fig['hero_cost']}</p>"
+        f'<p class="tagline">{fig["hero_line"]}</p>'
         + _kpis(best, logistic_cost, savings)
-        + '<p class="pitch">It recovers roughly <strong>half</strong> the token '
-        "savings reported for a 0.6B neural monitor, and still missed the bar "
-        "set for it before any model was trained. Both halves of that are the "
-        "result, and the bar was never moved to fit.</p>"
+        # The tagline now carries the cost result and the KPI row shows the
+        # recall against its bar, so this line earns its place only by saying
+        # something neither of them does: the mechanism, and where the bar
+        # came from.
+        + '<p class="pitch">Failure turns out to be predicted by <strong>declining '
+        "action novelty</strong> rather than by repeated errors, the opposite of "
+        "the starting hypothesis. The bar those numbers are judged against was "
+        "committed to source control before any model was trained.</p>"
         '<div class="cta">'
         + _ext(REPO, f'{icon("terminal", 16)}View source', cls="btn primary")
         + f'<a class="btn" href="#results">{icon("chart", 16)}Jump to results</a>'
