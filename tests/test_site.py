@@ -157,8 +157,12 @@ class TestBuild:
         # version of this test was vacuous and asserted nothing.
         text = build(artifacts, tmp_path / "index.html").read_text()
         assert "<script" not in text
-        # A <link> is allowed only if it carries its payload inline.
+        # A <link> is allowed if it carries its payload inline, or if it is
+        # pure metadata. rel=canonical names the page's own address and is
+        # never fetched; rel=icon or rel=stylesheet would be.
         for tag in re.findall(r"<link\b[^>]*>", text):
+            if "rel=canonical" in tag:
+                continue
             assert "data:" in tag, f"fetches an external resource: {tag}"
         for tag in re.findall(r"<(?:img|iframe|source|embed)\b[^>]*>", text):
             assert "http" not in tag, f"fetches an external resource: {tag}"
@@ -413,3 +417,28 @@ class TestBrand:
         text = build(artifacts, tmp_path / "index.html").read_text()
         brand = re.search(r'<div class="brand">(.*?)</div>', text, re.S).group(1)
         assert "M3 12h7" in brand
+
+
+class TestSharing:
+    def test_canonical_and_social_metadata_present(self, artifacts, tmp_path):
+        text = build(artifacts, tmp_path / "index.html").read_text()
+        assert 'rel=canonical href="https://averta.mayur.app/"' in text
+        for prop in ("og:title", "og:description", "og:url", "og:type"):
+            assert f'property="{prop}"' in text, prop
+        assert 'name="twitter:card"' in text
+
+    def test_description_matches_the_headline(self, artifacts, tmp_path):
+        # A hand-written meta description drifts away from what the page says.
+        # This one is the headline with its markup stripped, so a reader who
+        # arrives from a search result is promised what they will find.
+        text = build(artifacts, tmp_path / "index.html").read_text()
+        described = re.search(r"<meta name=description content=\"([^\"]+)\">", text)
+        assert described
+        tagline = re.search(r'<p class="tagline">(.*?)</p>', text, re.S).group(1)
+        assert described.group(1) == re.sub(r"<[^>]+>", "", tagline)
+
+    def test_no_raster_social_image_is_claimed(self, artifacts, tmp_path):
+        # og:image is deliberately absent: the page ships no raster, and
+        # pointing at an SVG would render as a broken card on most platforms.
+        text = build(artifacts, tmp_path / "index.html").read_text()
+        assert "og:image" not in text

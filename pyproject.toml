@@ -16,6 +16,11 @@ dependencies = [
     "mcp>=1.2",
 ]
 
+[project.urls]
+Results = "https://averta.mayur.app/"
+Repository = "https://github.com/mayurbijarniya/averta"
+Paper = "https://arxiv.org/abs/2608.03222"
+
 [project.scripts]
 averta = "averta.cli:app"
 averta-mcp = "averta.mcp_server:main"

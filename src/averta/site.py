@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import html
 import json
+import re
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -35,6 +36,8 @@ from averta.thresholds import TARGET_FPR
 
 PAPER = "https://arxiv.org/abs/2608.03222"
 REPO = "https://github.com/mayurbijarniya/averta"
+SITE_URL = "https://averta.mayur.app/"
+TITLE = "Averta, CPU-native failure prediction for AI coding agents"
 DATASET = "https://huggingface.co/datasets/SWE-Gym/OpenHands-Sampled-Trajectories"
 
 STYLE = """
@@ -1250,13 +1253,29 @@ def build(artifacts: Path, out: Path) -> Path:
         f"{brand}<nav aria-label=Contents><ol>{nav_items}</ol></nav>{outbound}",
     )
 
+    # The search result and the social preview both show this sentence, so it
+    # is the headline itself with its markup stripped, rather than a separate
+    # hand-written summary that could drift away from what the page claims.
+    description = re.sub(r"<[^>]+>", "", fig["hero_line"])
+
     document = (
         "<!doctype html><html lang=en><head><meta charset=utf-8>"
         '<meta name=viewport content="width=device-width,initial-scale=1">'
-        '<meta name=description content="CPU-native failure prediction for AI coding '
-        'agents: a pre-registered evaluation with a negative result.">'
-        "<title>Averta, CPU-native failure prediction for AI coding agents</title>"
+        f'<meta name=description content="{_e(description)}">'
+        f"<title>{_e(TITLE)}</title>"
         f'<link rel=icon href="{favicon_data_uri()}">'
+        # Canonical plus Open Graph, because this page gets shared as a link.
+        # Without them a social preview falls back to the bare URL, and the
+        # description is the one sentence most readers see before deciding
+        # whether to click.
+        f'<link rel=canonical href="{SITE_URL}">'
+        f'<meta property="og:title" content="{_e(TITLE)}">'
+        f'<meta property="og:description" content="{_e(description)}">'
+        f'<meta property="og:url" content="{SITE_URL}">'
+        '<meta property="og:type" content="website">'
+        '<meta name="twitter:card" content="summary">'
+        f'<meta name="twitter:title" content="{_e(TITLE)}">'
+        f'<meta name="twitter:description" content="{_e(description)}">'
         f"<style>{STYLE}</style></head><body>"
         f"{body}"
         "</body></html>"
