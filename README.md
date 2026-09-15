@@ -1,7 +1,7 @@
 # Averta
 
-**Predicting when an AI coding agent is about to fail, from a 2.1 KB model
-that scores a live session in 0.18 ms on one CPU core.**
+**Catching AI coding agents that are stuck and burning tokens, using a 2.1 KB
+CPU model in place of a 0.6B neural one.**
 
 ![python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![license](https://img.shields.io/badge/license-MIT-lightgrey)
@@ -9,8 +9,8 @@ that scores a live session in 0.18 ms on one CPU core.**
 
 When a coding agent gets stuck it keeps spending tokens that produce nothing.
 Averta reads a session as it runs, reports what is going wrong, and estimates
-whether the session is heading toward failure. It needs no GPU, no API key, and
-no network call at inference time.
+whether the session is heading toward failure. It scores a live session in
+0.18 ms on one CPU core, with no GPU, no API key and no network call.
 
 ```
 session 2e9e5250 · 1,417 turns

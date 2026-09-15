@@ -693,11 +693,14 @@ def _figures(
     # Composed here so the prose below never has to test for a missing key, and
     # so an absent measurement produces an honest sentence rather than a blank.
     measured_cost = "size" in out and "latency" in out
+    # The size only reads as surprising beside the thing it replaces, so the
+    # baseline sits in the same sentence rather than three sections down.
     out["hero_cost"] = (
-        f"using a <strong>{out['size']} model</strong> that scores a live session "
-        f"in <strong>{out['latency']}</strong> on one CPU core."
+        f"using a <strong>{out['size']} CPU model</strong> in place of a 0.6B "
+        f"neural one. It scores a live session in <strong>{out['latency']}</strong> "
+        "on one core."
         if measured_cost
-        else "using a compact linear model that scores a live session on one CPU core."
+        else "using a compact CPU model in place of a 0.6B neural one."
     )
     out["establish_cost"] = (
         f"a {out['size'].replace(' ', '&nbsp;')} linear model at "
@@ -775,8 +778,8 @@ def build(artifacts: Path, out: Path) -> Path:
         "<main><header class=\"hero\">"
         f'<span class="eyebrow">{icon("flask", 13)}Pre-registered study</span>'
         "<h1>Averta</h1>"
-        '<p class="tagline">Predicting when an AI coding agent is about to fail, '
-        f"{fig['hero_cost']}</p>"
+        '<p class="tagline">Catching AI coding agents that are stuck and burning '
+        f"tokens, {fig['hero_cost']}</p>"
         + _kpis(best, logistic_cost, savings)
         + '<p class="pitch">It recovers roughly <strong>half</strong> the token '
         "savings reported for a 0.6B neural monitor, and still missed the bar "
