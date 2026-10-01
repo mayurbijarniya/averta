@@ -5,7 +5,14 @@ import pytest
 
 from averta.features import FEATURE_NAMES
 from averta.monitor import fit_and_save
-from averta.session import MIN_CLUSTERED, WINDOW, analyse, render
+from averta.session import (
+    MIN_CLUSTERED,
+    WINDOW,
+    Repetition,
+    SessionReport,
+    analyse,
+    render,
+)
 from averta.testing import action, observation, session
 
 CUTS = (3, 5, 10, 20, 40)
@@ -130,6 +137,36 @@ class TestTrajectory:
 
 
 class TestRender:
+    @staticmethod
+    def edited(path: str) -> SessionReport:
+        repetition = Repetition(
+            kind="file edit", label=path, occurrences=3, clustered=3, first_turn=2,
+            last_turn=6, cluster_start=2, cluster_end=6, chars_in_cluster=100,
+        )
+        return SessionReport(session_id="s", turns=30, repetitions=(repetition,))
+
+    def test_paths_inside_the_project_are_shown_relative(self):
+        text = render(self.edited("/home/me/proj/src/a.py"), root="/home/me/proj")
+        assert "src/a.py" in text
+        assert "/home/me/proj/src/a.py" not in text
+
+    def test_paths_outside_the_project_stay_absolute(self):
+        assert "/etc/hosts" in render(self.edited("/etc/hosts"), root="/home/me/proj")
+
+    def test_sibling_directory_with_a_shared_prefix_stays_absolute(self):
+        text = render(self.edited("/home/me/project2/a.py"), root="/home/me/proj")
+        assert "/home/me/project2/a.py" in text
+
+    def test_short_session_does_not_claim_the_largest_prefix(self, scorer):
+        # 12 turns stops the curve at 10, which is not the largest cut of 40.
+        text = render(analyse("s", session(12), scorer=scorer))
+        assert "not reached the next evaluated prefix" in text
+        assert "beyond the largest" not in text
+
+    def test_long_session_stops_at_the_largest_prefix(self, scorer):
+        text = render(analyse("s", session(60), scorer=scorer))
+        assert "beyond the largest evaluated prefix" in text
+
     def test_separates_measured_from_estimated(self, scorer):
         text = render(analyse("s", session(60), scorer=scorer), base_rate=0.88)
         assert "MEASURED, exact, no model involved" in text

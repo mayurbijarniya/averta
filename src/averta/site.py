@@ -1132,16 +1132,22 @@ def build(artifacts: Path, out: Path) -> Path:
                 f"<p>The {len(worst)} largest shifts all exceed "
                 f"{min(abs(s['standardized_difference']) for s in worst):.1f} standard "
                 f"deviations, and {outside} of {len(drift['shifts'])} features fall "
-                "outside the training range entirely. Claude "
-                "Code emits more assistant turns per tool call than OpenHands, because "
-                "thinking blocks become their own turns, a &ldquo;turn&rdquo; is not the "
-                "same unit across scaffolds. Cross-scaffold accuracy is therefore "
+                "outside the training range entirely. A handful of sessions describes "
+                "itself, not Claude Code, but the features plainly do not land where the "
+                "model was fitted. Cross-scaffold accuracy is therefore "
                 "<strong>unmeasured</strong>, and the tool labels its output indicative "
                 "in every code path.</p>"
                 '<p class="flag">{FLAG_ICON}This check caught a real bug. Two features reported '
                 "exactly 0.00 on sessions full of edits, because edit detection was keyed "
                 "to one tool vocabulary. Not a slightly worse score, a confident zero "
-                "for something that happened dozens of times.</p>",
+                "for something that happened dozens of times.</p>"
+                '<p class="flag">{FLAG_ICON}Recounting a session by hand caught another. Claude '
+                "Code writes one model response as several transcript lines, each "
+                "repeating its token usage, and reading them line by line counted tokens "
+                "two to three times and made every content block its own turn. An "
+                "earlier version of this table blamed the resulting step-count shift on "
+                "the scaffold. Lines are now merged by response id, as the corpus "
+                "treats one message as one turn.</p>",
             )
         )
 
@@ -1176,13 +1182,17 @@ def build(artifacts: Path, out: Path) -> Path:
             "Using it",
             "Runs entirely locally. No API keys, no network at inference time, "
             "no session data leaves the machine.",
-            "<pre><code>git clone &lt;repo&gt; &amp;&amp; cd averta\n"
-            "python3 -m venv .venv\n"
-            ".venv/bin/python -m pip install -e .\n\n"
-            "averta explain      # analyse your most recent coding session\n"
-            "averta sessions     # list local sessions\n"
+            "<pre><code>git clone https://github.com/mayurbijarniya/averta &amp;&amp; cd averta\n"
+            "python3.13 -m venv .venv          # any Python 3.11+\n"
+            ".venv/bin/python -m pip install -e .\n"
+            "source .venv/bin/activate\n\n"
+            "averta explain      # analyse this project's most recent session\n"
+            "averta sessions     # list this project's sessions (--all for every one)\n"
             "averta site         # rebuild this page</code></pre>"
-            "<p>Those work immediately, the trained model is committed. Reproducing the "
+            "<p>Those work immediately and from any directory: the trained model ships "
+            "inside the package. Without a session id, <code>explain</code> reads the "
+            "most recent session started in the current directory, and every report "
+            "opens with the transcript it read and why. Reproducing the "
             "study needs the corpus, which is a 12-minute download:</p>"
             "<pre><code>averta ingest &amp;&amp; averta features\n"
             "averta train        # cross-validate and apply the gate\n"
@@ -1193,7 +1203,9 @@ def build(artifacts: Path, out: Path) -> Path:
             "recurring errors, reissued calls, clustered repetition, exact token counts, "
             "from what is <strong>estimated</strong> by a model that did not clear its "
             "gate. The measured half needs no model and is as reliable as the transcript. "
-            "An MCP server exposes the same analysis to a coding agent over stdio.</p>"
+            "An MCP server exposes the same analysis to a coding agent over stdio; "
+            "it reads the session started in the project it runs in, and every "
+            "response names the transcript it used.</p>"
             '<p class="note">macOS users need <code>brew install libomp</code> for '
             "xgboost. On Linux, <code>libgomp1</code>.</p>",
         )

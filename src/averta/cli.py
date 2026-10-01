@@ -7,7 +7,16 @@ from pathlib import Path
 import numpy as np
 import typer
 
-from averta.adapters import discover_transcripts, read_transcript
+from averta.adapters import (
+    Selection,
+    SelectionError,
+    current_project,
+    discover_transcripts,
+    project_transcripts,
+    read_transcript,
+    select_transcript,
+    transcript_root,
+)
 from averta.analyze import (
     calibration,
     inference_cost,
@@ -62,6 +71,24 @@ def main(
     ),
 ) -> None:
     """Averta, failure prediction for coding agents."""
+
+
+def select(session: str | None) -> Selection:
+    """Resolve which transcript a command means, and say so before using it.
+
+    Printing the choice is the point: a report on the wrong session looks
+    exactly like a report on the right one.
+    """
+    try:
+        selection = select_transcript(session)
+    except SelectionError as exc:
+        raise typer.BadParameter(str(exc)) from None
+    typer.echo(f"transcript: {selection.path}")
+    typer.echo(f"chosen:     {selection.describe()}")
+    for warning in selection.warnings:
+        typer.echo(f"WARNING     {warning}")
+    typer.echo("")
+    return selection
 
 
 def require_db(db: Path) -> None:
@@ -354,6 +381,10 @@ def site(
     out: Path = typer.Option(Path("site/index.html"), help="page to write"),
 ) -> None:
     """Render a results page from the committed artifacts."""
+    if not artifacts.is_dir():
+        raise typer.BadParameter(
+            f"{artifacts} not found; run this from the repository root or pass --artifacts"
+        )
     path = build_site(artifacts, out)
     size = path.stat().st_size
     typer.echo(f"wrote {path} ({size / 1024:.0f} KB, self-contained, no JS)")
@@ -362,25 +393,24 @@ def site(
 
 @app.command()
 def explain(
-    session: str = typer.Argument(None, help="session id; defaults to most recent"),
+    session: str = typer.Argument(
+        None, help="session id or prefix; defaults to this project's most recent"
+    ),
     model_path: Path = typer.Option(DEFAULT_MODEL_PATH),
     top: int = typer.Option(5, help="how many repetitions to list"),
 ) -> None:
-    """Full analysis of one session: what repeated, and how risk moved."""
-    paths = discover_transcripts()
-    if not paths:
-        raise typer.BadParameter("no transcripts found under ~/.claude/projects")
+    """Full analysis of one session: what repeated, and how risk moved.
 
-    if session:
-        matches = [p for p in paths if p.stem.startswith(session)]
-        if not matches:
-            raise typer.BadParameter(f"no transcript matching {session!r}")
-        chosen = matches[0]
-    else:
-        chosen = paths[0]
+    Without a session id, reads the most recent session started in the current
+    directory, or in the directory named by $AVERTA_PROJECT.
+    """
+    transcript = read_transcript(select(session).path)
 
-    transcript = read_transcript(chosen)
+    # The measured half needs no model, so a missing one degrades the report
+    # rather than failing it, but it must never vanish without saying so.
     scorer = Scorer.load(model_path) if model_path.exists() else None
+    if scorer is None:
+        typer.echo(f"WARNING     no model at {model_path}; the risk estimate is omitted\n")
 
     report = analyse(
         transcript.session_id,
@@ -389,7 +419,11 @@ def explain(
         user_rejections=transcript.user_rejections,
         top=top,
     )
-    typer.echo(render_session(report, base_rate=scorer.base_rate if scorer else None))
+    typer.echo(
+        render_session(
+            report, base_rate=scorer.base_rate if scorer else None, root=transcript.cwd
+        )
+    )
 
     typer.echo("")
     typer.echo("TOKENS")
@@ -416,7 +450,7 @@ def drift(
 
     paths = discover_transcripts()
     if not paths:
-        raise typer.BadParameter("no local transcripts under ~/.claude/projects")
+        raise typer.BadParameter(f"no local transcripts under {transcript_root()}")
 
     rows = []
     used = []
@@ -498,42 +532,50 @@ def fit(
 
 
 @app.command()
-def sessions(limit: int = typer.Option(10, help="how many recent transcripts to list")) -> None:
-    """List local Claude Code transcripts available for scoring."""
+def sessions(
+    limit: int = typer.Option(10, help="how many recent transcripts to list"),
+    all_projects: bool = typer.Option(
+        False, "--all", help="list every project, not just the current directory's"
+    ),
+) -> None:
+    """List local Claude Code transcripts available for scoring.
+
+    Scoped to sessions started in the current directory (or $AVERTA_PROJECT), the same set that
+    `explain` and `score` choose from, so the first row is the session they
+    read by default.
+    """
     paths = discover_transcripts()
     if not paths:
-        typer.echo("no transcripts found under ~/.claude/projects")
+        typer.echo(f"no transcripts found under {transcript_root()}")
         return
 
-    typer.echo(f"{'session':<40}{'turns':>7}{'tokens':>10}  project")
+    here = current_project()
+    if not all_projects:
+        scoped = [path for path, _ in project_transcripts(here, paths)]
+        if scoped:
+            paths = scoped
+        else:
+            typer.echo(f"no sessions started in {here}; listing every project\n")
+
+    typer.echo(f"{'session':<40}{'turns':>7}{'tokens':>14}  project")
     for path in paths[:limit]:
         transcript = read_transcript(path)
         typer.echo(
             f"{transcript.session_id:<40}{len(transcript):>7}"
-            f"{transcript.total_tokens:>10}  {transcript.repo}"
+            f"{transcript.total_tokens:>14,}  {transcript.repo}"
         )
 
 
 @app.command()
 def score(
-    session: str = typer.Argument(None, help="session id; defaults to most recent"),
+    session: str = typer.Argument(
+        None, help="session id or prefix; defaults to this project's most recent"
+    ),
     model_path: Path = typer.Option(DEFAULT_MODEL_PATH),
     top: int = typer.Option(5, help="how many contributing features to show"),
 ) -> None:
     """Score a local Claude Code session for failure risk."""
-    paths = discover_transcripts()
-    if not paths:
-        raise typer.BadParameter("no transcripts found under ~/.claude/projects")
-
-    if session:
-        matches = [p for p in paths if p.stem.startswith(session)]
-        if not matches:
-            raise typer.BadParameter(f"no transcript matching {session!r}")
-        chosen = matches[0]
-    else:
-        chosen = paths[0]
-
-    transcript = read_transcript(chosen)
+    transcript = read_transcript(select(session).path)
     scorer = Scorer.load(model_path)
     report = scorer.score(transcript.session_id, transcript.turns, top=top)
 

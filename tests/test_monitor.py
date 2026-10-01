@@ -86,6 +86,89 @@ class TestClaudeCodeAdapter:
         assert discover_transcripts(tmp_path / "nope") == []
 
 
+USAGE = {
+    "input_tokens": 3,
+    "output_tokens": 200,
+    "cache_read_input_tokens": 5000,
+    "cache_creation_input_tokens": 400,
+}
+
+
+def thinking_line(message_id: str) -> dict:
+    record = assistant("", usage=USAGE, message_id=message_id)
+    record["message"]["content"] = [{"type": "thinking", "thinking": "plan the change"}]
+    return record
+
+
+class TestSplitResponses:
+    """Claude Code writes one line per content block of a single response."""
+
+    def split_response(self, tmp_path):
+        # thinking, text and two parallel tool calls from one response, with
+        # the first call's result logged before the second call, as in real
+        # transcripts.
+        return write_transcript(
+            tmp_path,
+            [
+                thinking_line("msg_1"),
+                assistant("reading both files", usage=USAGE, message_id="msg_1"),
+                assistant("", tool="Read", tool_input={"file_path": "a.py"},
+                          usage=USAGE, message_id="msg_1"),
+                tool_result("contents of a"),
+                assistant("", tool="Read", tool_input={"file_path": "b.py"},
+                          usage=USAGE, message_id="msg_1"),
+                tool_result("contents of b"),
+                assistant("done", usage=USAGE, message_id="msg_2"),
+            ],
+        )
+
+    def test_one_response_is_one_turn(self, tmp_path):
+        transcript = read_transcript(self.split_response(tmp_path))
+        roles = [turn.role for turn in transcript.turns]
+        assert roles == ["assistant", "tool", "tool", "assistant"]
+
+    def test_tool_calls_precede_their_results(self, tmp_path):
+        first = read_transcript(self.split_response(tmp_path)).turns[0]
+        assert first.n_tool_calls == 2
+        assert first.tool_name == "Read"
+        assert first.step_index == 0
+
+    def test_text_from_every_line_is_kept(self, tmp_path):
+        first = read_transcript(self.split_response(tmp_path)).turns[0]
+        assert first.content_chars == len("plan the change\nreading both files")
+
+    def test_usage_counts_once_per_response(self, tmp_path):
+        transcript = read_transcript(self.split_response(tmp_path))
+        assert transcript.output_tokens == 2 * USAGE["output_tokens"]
+        assert transcript.input_tokens == 2 * USAGE["input_tokens"]
+        assert transcript.cache_read_tokens == 2 * USAGE["cache_read_input_tokens"]
+        assert transcript.cache_write_tokens == 2 * USAGE["cache_creation_input_tokens"]
+
+    def test_turn_indices_are_contiguous(self, tmp_path):
+        transcript = read_transcript(self.split_response(tmp_path))
+        assert [t.turn_index for t in transcript.turns] == list(range(len(transcript)))
+
+    def test_lines_without_an_id_are_separate_responses(self, tmp_path):
+        path = write_transcript(
+            tmp_path, [assistant("a", usage=USAGE), assistant("b", usage=USAGE)]
+        )
+        transcript = read_transcript(path)
+        assert len(transcript) == 2
+        assert transcript.output_tokens == 2 * USAGE["output_tokens"]
+
+    def test_distinct_ids_are_not_merged(self, tmp_path):
+        path = write_transcript(
+            tmp_path,
+            [
+                assistant("a", tool="Bash", tool_input={"command": "ls"}, message_id="m1"),
+                assistant("b", tool="Bash", tool_input={"command": "ls"}, message_id="m2"),
+            ],
+        )
+        transcript = read_transcript(path)
+        assert len(transcript) == 2
+        assert transcript.turns[0].tool_input_hash == transcript.turns[1].tool_input_hash
+
+
 @pytest.fixture
 def scorer(tmp_path):
     rng = np.random.default_rng(0)

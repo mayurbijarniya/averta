@@ -18,7 +18,10 @@ from averta.features import FEATURE_NAMES, extract
 from averta.features.view import TurnView
 from averta.thresholds import GATE_CUT_POINT
 
-DEFAULT_MODEL_PATH = Path("artifacts/model.pkl")
+# Shipped inside the package, beside this file. A path relative to the working
+# directory resolved only from the repository root: Claude Code starts an MCP
+# server in the user's project, where it was never found.
+DEFAULT_MODEL_PATH = Path(__file__).resolve().with_name("model.pkl")
 
 MIN_TURNS_TO_SCORE = 5
 
@@ -153,7 +156,9 @@ class Scorer:
     @classmethod
     def load(cls, path: Path = DEFAULT_MODEL_PATH) -> Scorer:
         if not path.exists():
-            raise FileNotFoundError(f"no model at {path}; run `averta fit` first")
+            raise FileNotFoundError(
+                f"no model at {path}; reinstall averta, or run `averta fit` to train one"
+            )
         with path.open("rb") as handle:
             payload = pickle.load(handle)
         return cls(

@@ -98,6 +98,29 @@ class TestHeadlineFigures:
         point = max(eligible, key=lambda p: p["savings_rate"])
         assert f"{point['savings_rate'] * 100:.1f}%" in prose
 
+    def test_drift_table_matches_the_artifact(self, prose):
+        # The transfer table is hand-copied from the drift artifact, which a
+        # reader fix or new local sessions can move without touching prose.
+        drift = _load("phase6/drift_cut40.json")
+        shifts = {s["feature"]: s for s in drift["shifts"]}
+        rows = re.findall(
+            r"^\| `(\w+)` \| (\d+\.\d{2}) \| (\d+\.\d{2}) \| ([+−-]\d+\.\d{2})",
+            prose,
+            flags=re.MULTILINE,
+        )
+        assert rows, "no drift table found in the documents"
+        for feature, corpus, local, std_diff in rows:
+            shift = shifts[feature]
+            assert corpus == f"{shift['corpus_mean']:.2f}", feature
+            assert local == f"{shift['local_mean']:.2f}", feature
+            assert std_diff.replace("−", "-") == f"{shift['standardized_difference']:+.2f}", feature
+
+    def test_drift_sample_sizes_match_the_artifact(self, prose):
+        drift = _load("phase6/drift_cut40.json")
+        quoted = _quoted(prose, r"local \(n=(\d+)\)")
+        assert quoted == {str(drift["n_local"])}, f"local sample sizes quoted: {quoted}"
+        assert f"corpus (n={drift['n_corpus']:,})" in prose
+
     def test_corpus_size_matches_phase_one(self, prose):
         summary = _load("phase1/corpus_summary.json")
         sessions = summary.get("sessions")

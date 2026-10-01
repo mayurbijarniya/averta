@@ -1,8 +1,15 @@
 """MCP server exposing Averta to a coding agent.
 
 Runs locally over stdio. Nothing is transmitted anywhere: the agent asks about
-its own session, the answer is computed from a 2.7 KB model on CPU, and the
-agent's own tokens pay for the conversation.
+its own session, the answer is computed from a small linear model on CPU, and
+the agent's own tokens pay for the conversation.
+
+The server is never told which session is calling it. Claude Code starts it in
+the project directory, so by default each tool reads the most recent session
+started there; `$AVERTA_SESSION` pins one, `$AVERTA_PROJECT` names a different
+directory. Every response carries a `selection` block saying which transcript
+was read and why, because an answer about the wrong session looks exactly like
+an answer about the right one.
 
 Every response carries the accuracy caveats. The model did not clear its
 pre-registered gate, and it is applied here to a different agent scaffold than
@@ -18,7 +25,14 @@ from typing import Any
 
 from mcp.server.mcpserver import MCPServer
 
-from averta.adapters import discover_transcripts, read_transcript
+from averta.adapters import (
+    Selection,
+    current_project,
+    discover_transcripts,
+    project_transcripts,
+    read_transcript,
+    select_transcript,
+)
 from averta.monitor import DEFAULT_MODEL_PATH, Scorer
 
 mcp = MCPServer("averta")
@@ -35,16 +49,8 @@ TRANSFER_CAVEAT = (
 )
 
 
-def _resolve(session: str | None) -> Path:
-    paths = discover_transcripts()
-    if not paths:
-        raise ValueError("no transcripts found under ~/.claude/projects")
-    if session is None:
-        return paths[0]
-    for path in paths:
-        if path.stem.startswith(session):
-            return path
-    raise ValueError(f"no transcript matching {session!r}")
+def _resolve(session: str | None) -> Selection:
+    return select_transcript(session)
 
 
 def _caveats() -> list[str]:
@@ -56,20 +62,23 @@ def get_session_risk(session: str | None = None, model_path: str | None = None) 
     """Estimate whether a coding session is heading toward failure.
 
     Args:
-        session: session id prefix. Defaults to the most recently modified.
-        model_path: override the model file. Defaults to artifacts/model.pkl.
+        session: session id or prefix. Defaults to the most recent session
+            started in this project; check `selection` in the response.
+        model_path: override the model file. Defaults to the one shipped with
+            the package.
 
     Returns the failure probability, the features driving it, and the accuracy
     caveats that must accompany any use of the number.
     """
-    path = _resolve(session)
-    transcript = read_transcript(path)
+    selection = _resolve(session)
+    transcript = read_transcript(selection.path)
     scorer = Scorer.load(Path(model_path) if model_path else DEFAULT_MODEL_PATH)
     report = scorer.score(transcript.session_id, transcript.turns)
 
     return {
         "session_id": report.session_id,
         "project": transcript.repo,
+        "selection": selection.as_dict(),
         "turns_observed": report.turns,
         "scored_at_turn": report.scored_at_turn,
         "failure_probability": report.failure_probability,
@@ -101,8 +110,8 @@ def get_repeated_failures(session: str | None = None, limit: int = 10) -> dict[s
     numbers collapses into one entry. Repeated tool calls are grouped by a hash
     of their exact arguments.
     """
-    path = _resolve(session)
-    transcript = read_transcript(path)
+    selection = _resolve(session)
+    transcript = read_transcript(selection.path)
 
     errors: Counter[str] = Counter(
         turn.error_signature for turn in transcript.turns if turn.error_signature
@@ -117,6 +126,8 @@ def get_repeated_failures(session: str | None = None, limit: int = 10) -> dict[s
 
     return {
         "session_id": transcript.session_id,
+        "project": transcript.repo,
+        "selection": selection.as_dict(),
         "turns_observed": len(transcript),
         "recurring_errors": [
             {"signature": signature, "occurrences": count}
@@ -179,6 +190,8 @@ def should_i_restart(
         )
 
     return {
+        "session_id": risk.get("session_id"),
+        "selection": risk.get("selection"),
         "recommendation": recommendation,
         "reason": reason,
         "failure_probability": probability,
@@ -197,10 +210,25 @@ def should_i_restart(
 
 
 @mcp.tool()
-def list_sessions(limit: int = 10) -> dict[str, Any]:
-    """List local Claude Code sessions available to inspect."""
+def list_sessions(limit: int = 10, all_projects: bool = False) -> dict[str, Any]:
+    """List local Claude Code sessions available to inspect.
+
+    Args:
+        limit: how many to return, most recent first.
+        all_projects: include sessions from every project, not only this one.
+            The first entry of the default listing is the session the other
+            tools read when no id is given.
+    """
+    paths = discover_transcripts()
+    here = current_project()
+    scoped = [path for path, _ in project_transcripts(here, paths)]
+    if not all_projects and scoped:
+        paths, scope = scoped, "project"
+    else:
+        scope = "all"
+
     sessions = []
-    for path in discover_transcripts()[:limit]:
+    for path in paths[:limit]:
         transcript = read_transcript(path)
         sessions.append(
             {
@@ -210,7 +238,12 @@ def list_sessions(limit: int = 10) -> dict[str, Any]:
                 "tokens": transcript.total_tokens,
             }
         )
-    return {"sessions": sessions, "count": len(sessions)}
+    return {
+        "sessions": sessions,
+        "count": len(sessions),
+        "scope": scope,
+        "project_dir": str(here),
+    }
 
 
 def main() -> None:

@@ -87,12 +87,19 @@ def claude_assistant_record(
     tool_input: dict[str, Any] | None = None,
     usage: dict[str, int] | None = None,
     cwd: str = "/home/me/proj",
+    message_id: str | None = None,
 ) -> dict[str, Any]:
-    """One `assistant` line as Claude Code writes it."""
-    content: list[dict[str, Any]] = [{"type": "text", "text": text}]
+    """One `assistant` line as Claude Code writes it.
+
+    Real transcripts carry `message.id`, shared by every line of one response;
+    pass `message_id` to build a response split across lines.
+    """
+    content: list[dict[str, Any]] = [{"type": "text", "text": text}] if text else []
     if tool:
         content.append({"type": "tool_use", "name": tool, "input": tool_input or {}})
     message: dict[str, Any] = {"role": "assistant", "content": content}
+    if message_id:
+        message["id"] = message_id
     if usage:
         message["usage"] = usage
     return {"type": "assistant", "message": message, "cwd": cwd}

@@ -35,8 +35,8 @@ score is supporting context.
 - **Any consequential or irreversible decision**, billing, access, scheduling,
   or evaluating a person's work.
 - **Agent scaffolds other than OpenHands**, without re-measuring. Applied to
-  Claude Code transcripts, every comparable feature shifts by more than 1.3
-  standard deviations and two fall outside the training range entirely.
+  Claude Code transcripts (n=7), 13 of 33 features shift by more than 1.3
+  standard deviations and 3 fall outside the training range entirely.
   Cross-scaffold accuracy is **unmeasured**.
 - **Sessions beyond 40 turns.** Features are cumulative over the prefix, so
   anything longer is out of distribution. The scorer truncates to the largest

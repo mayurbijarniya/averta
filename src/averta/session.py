@@ -71,6 +71,7 @@ class SessionReport:
     turns_since_clean: int = 0
     chars_since_clean: int = 0
     scored_through: int | None = None
+    largest_cut: int | None = None
 
     @property
     def risk_direction(self) -> str:
@@ -214,6 +215,9 @@ def analyse(
             if report.failure_probability is not None:
                 trajectory.append(RiskPoint(cut, report.failure_probability))
         scored_through = usable[-1] if usable else None
+        largest_cut = max(scorer.cut_points)
+    else:
+        largest_cut = None
 
     return SessionReport(
         session_id=session_id,
@@ -225,10 +229,23 @@ def analyse(
         turns_since_clean=turns_since,
         chars_since_clean=chars_since,
         scored_through=scored_through,
+        largest_cut=largest_cut,
     )
 
 
-def render(report: SessionReport, base_rate: float | None = None) -> str:
+def _relative(label: str, root: str | None) -> str:
+    """A path inside the session's project, shown relative to it."""
+    if root:
+        prefix = root.rstrip("/") + "/"
+        if label.startswith(prefix):
+            return label[len(prefix) :]
+    return label
+
+
+def render(
+    report: SessionReport, base_rate: float | None = None, root: str | None = None
+) -> str:
+    """Plain-text report. `root`, the session's working directory, shortens paths."""
     lines = [f"session {report.session_id}", f"turns: {report.turns:,}", ""]
 
     lines.append("MEASURED, exact, no model involved")
@@ -250,7 +267,7 @@ def render(report: SessionReport, base_rate: float | None = None) -> str:
                 f"turns {item.cluster_start}-{item.cluster_end}  "
                 f"{item.chars_in_cluster:,} chars{spread}"
             )
-            lines.append(f"         {item.label}")
+            lines.append(f"         {_relative(item.label, root)}")
     else:
         lines.append("")
         lines.append(
@@ -271,9 +288,15 @@ def render(report: SessionReport, base_rate: float | None = None) -> str:
             lines.append(f"  corpus base rate {base_rate:.1%}, compare against this, "
                          "not against zero")
         if report.scored_through and report.turns > report.scored_through:
-            lines.append(
-                f"  stops at turn {report.scored_through}: beyond the largest "
-                "evaluated prefix, so no curve is drawn"
-            )
+            if report.scored_through == report.largest_cut:
+                lines.append(
+                    f"  stops at turn {report.scored_through}: beyond the largest "
+                    "evaluated prefix, so no curve is drawn"
+                )
+            else:
+                lines.append(
+                    f"  stops at turn {report.scored_through}: the session has not "
+                    "reached the next evaluated prefix"
+                )
 
     return "\n".join(lines)

@@ -18,14 +18,17 @@ CUTS = (3, 5, 10, 20, 40)
 
 
 @pytest.fixture
-def local_session(tmp_path, monkeypatch):
+def local_session(tmp_path, monkeypatch, isolated_transcripts):
+    project = tmp_path / "proj"
+    project.mkdir()
     records = []
     for i in range(24):
-        records.append(assistant(f"step {i}", tool="Bash", tool_input={"command": "ls"}))
-        records.append(tool_result("output", is_error=i % 5 == 0))
-    path = write_transcript(tmp_path, records)
-
-    monkeypatch.setattr(mcp_server, "discover_transcripts", lambda *a, **k: [path])
+        records.append(
+            assistant(f"step {i}", tool="Bash", tool_input={"command": "ls"}, cwd=str(project))
+        )
+        records.append(tool_result("output", is_error=i % 5 == 0, cwd=str(project)))
+    path = write_transcript(isolated_transcripts, records)
+    monkeypatch.chdir(project)
 
     rng = np.random.default_rng(0)
     X = rng.random((200, len(FEATURE_NAMES)))
@@ -123,7 +126,6 @@ class TestListSessions:
         assert result["count"] == 1
         assert result["sessions"][0]["turns"] > 0
 
-    def test_no_transcripts_raises_on_risk(self, monkeypatch):
-        monkeypatch.setattr(mcp_server, "discover_transcripts", lambda *a, **k: [])
+    def test_no_transcripts_raises_on_risk(self):
         with pytest.raises(ValueError, match="no transcripts found"):
             mcp_server.get_session_risk()

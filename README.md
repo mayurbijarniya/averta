@@ -15,21 +15,24 @@ whether the session is heading toward failure. It scores a live session in
 0.18 ms on one CPU core, with no GPU, no API key and no network call.
 
 ```
-session 2e9e5250 · 1,417 turns
+session 2e9e5250-7972-4be0-a210-bd8e7ab3c7e4
+turns: 1,895
 
 MEASURED, exact, no model involved
-  agent errors            8
-  user rejections         4  (not agent failures)
-  turns since a clean result  1
+  agent errors            15
+  user rejections         5  (not agent failures)
+  turns since a clean result  5
 
   clustered repetition  (>=3x within 25 turns)
-    10x  file edit  turns 1357-1381   adapters/claude_code.py
-     6x  file edit  turns 1251-1271   site.py
+    6x  file edit  turns 940-960  4,328 chars
+         averta/src/averta/adapters/claude_code.py
+    6x  file edit  turns 1094-1118  3,117 chars, 48x overall
+         averta/src/averta/site.py
 
 ESTIMATED, model did not clear its gate; context only
-  risk over turns 5-40   █▇▁█  (flat)
-    turn  10   87.2%
-    turn  40   89.4%
+  risk over turns 5-40   ▅▁▅█  (rising)
+    turn  10   79.0%
+    turn  40   94.5%
   corpus base rate 90.6%, compare against this, not against zero
 ```
 
@@ -238,25 +241,35 @@ available, not a controlled replication.
   AUROC would be noise presented as a result.
 
 What is measurable without labels is whether the features compute comparably at
-all. At cut point 40, corpus (n=2,409) against local (n=3):
+all. At cut point 40, corpus (n=2,409) against local (n=7):
 
 | feature | corpus | local | std diff |
 |---|---|---|---|
-| `n_steps` | 18.72 | 23.33 | +5.29 (outside training range) |
-| `n_tool_calls` | 18.84 | 10.00 | −4.40 |
-| `turns_since_error` | 9.30 | 40.00 | +2.74 |
-| `error_rate` | 0.23 | 0.00 | −1.77 |
+| `n_tool_calls` | 18.84 | 12.29 | −3.26 |
+| `turns_since_error` | 9.30 | 39.29 | +2.68 |
+| `n_distinct_tools` | 1.94 | 2.57 | +2.33 (outside training range) |
+| `error_rate` | 0.23 | 0.01 | −1.68 |
 
-Claude Code emits more assistant turns per tool call than OpenHands, because
-thinking blocks become their own turns, so a "turn" is not the same unit across
-scaffolds. The live monitor therefore labels its output **indicative** in every
-code path, including over MCP.
+13 of 33 features shift by more than 1.3 standard deviations and 3 fall outside
+the training range. Seven sessions describe themselves, not Claude Code; the
+point is that the features do not land where the model was fitted, so the live
+monitor labels its output **indicative** in every code path, including over MCP.
 
-This check caught a real bug. `n_edits` and `n_files_touched` initially reported
-exactly 0.00 on sessions full of edits: `edited_path` was keyed to the OpenHands
-`str_replace_editor` argument schema, while Claude Code uses separate
-`Edit`/`Write`/`MultiEdit` tools with `file_path`. The feature failed silently
-to zero and the model extrapolated on it. Both vocabularies are now recognised.
+This check caught two real bugs, and recounting a session by hand caught a third.
+
+- `n_edits` and `n_files_touched` reported exactly 0.00 on sessions full of
+  edits: `edited_path` was keyed to the OpenHands `str_replace_editor` argument
+  schema, while Claude Code uses separate `Edit`/`Write`/`MultiEdit` tools with
+  `file_path`. Both vocabularies are now recognised.
+- `action_compression_ratio` exceeded its bound of 1 on short inputs, because
+  the zlib header dominated them. It now uses raw deflate and is clamped.
+- Claude Code writes one model response as several transcript lines, one per
+  content block, each repeating the response's token usage. Read line by line,
+  a session's tokens were counted two to three times and every content block,
+  thinking, text or tool call, became its own turn. An earlier version of this table attributed the
+  resulting `n_steps` shift (+5.29) to the scaffold; re-read correctly, the
+  same three sessions give −2.36. Lines are now merged by response id, matching
+  the corpus, where one message is one turn.
 
 ## Usage
 
@@ -274,22 +287,41 @@ Then:
 
 ```bash
 git clone https://github.com/mayurbijarniya/averta && cd averta
-python3 -m venv .venv
+python3.13 -m venv .venv          # any Python 3.11+; check `python3 --version` first
 .venv/bin/python -m pip install -e ".[dev]"
+source .venv/bin/activate         # puts `averta` and `averta-mcp` on PATH
 ```
 
 ### Analyse your own sessions
 
-These work immediately. The trained model is committed, so nothing needs
-downloading:
+These work immediately. The trained model ships inside the package
+(`src/averta/model.pkl`), so nothing needs downloading and they run from any
+directory:
 
 ```bash
-averta explain     # full analysis of your most recent coding session
-averta sessions    # list local Claude Code transcripts
+averta explain     # full analysis of this project's most recent session
+averta sessions    # list this project's sessions (--all for every project)
 averta score       # just the risk estimate
-averta drift       # compare your sessions against the training corpus
-averta site        # rebuild the results page
+averta site        # rebuild the results page (from the repository root)
 ```
+
+**Which session is read.** Claude Code stores one transcript per session under
+`~/.claude/projects/` (or `$CLAUDE_CONFIG_DIR/projects/`). Without an id, every
+command reads the most recent session *started in the current directory*. Run
+from a subdirectory, it uses the project that encloses it. If no session was
+started here, it falls back to the most recent session anywhere and prints a
+warning. Every report opens with the transcript path and the reason it was
+chosen:
+
+```text
+transcript: ~/.claude/projects/-Users-me-code-myapp/3f2a….jsonl
+chosen:     most recent session started in /Users/me/code/myapp
+```
+
+To pick one explicitly, pass an id or a unique prefix (`averta explain 3f2a`),
+set `AVERTA_SESSION`, or set `AVERTA_PROJECT` to read another directory's
+sessions. If two sessions in the same project were written within five minutes
+of each other, the report warns that it may have picked the wrong one.
 
 `averta explain` is the one worth running; its output is the block at the top of
 this README. Repetition is ranked by **density**, not total count: editing one
@@ -320,6 +352,7 @@ averta train       # cross-validate every model and apply the gate
 averta diagnose    # permutation importance and CPU inference cost
 averta savings     # token savings against sessions wrongly terminated
 averta figures     # render the three result figures
+averta drift       # compare your local sessions against the training corpus
 averta site        # build a static results page from the artifacts
 ```
 
@@ -334,15 +367,23 @@ own session, so the agent's tokens pay for the conversation and the prediction
 itself costs nothing.
 
 ```bash
-claude mcp add averta -- /absolute/path/to/.venv/bin/averta-mcp
+claude mcp add --scope user averta -- /absolute/path/to/averta/.venv/bin/averta-mcp
 ```
+
+The server is never told which session is calling it. Claude Code starts it in
+the project directory, so each tool reads the most recent session started
+there, which is the live one unless two sessions are open in the same project.
+Every response includes a `selection` block (`session_id`, `transcript_path`,
+`selected_by`, `warnings`), so the agent and you can see which transcript was
+read. To pin one, set `AVERTA_SESSION` in the server's environment
+(`claude mcp add -e AVERTA_SESSION=<id> …`), or pass `session` to any tool.
 
 | tool | returns |
 |---|---|
 | `get_session_risk` | failure probability, contributing features, caveats |
 | `get_repeated_failures` | recurring error signatures and reissued tool calls, measured, no model |
 | `should_i_restart` | threshold applied to the risk estimate, with evidence |
-| `list_sessions` | local sessions available to inspect |
+| `list_sessions` | this project's sessions, or every project's with `all_projects` |
 
 Every response carries the gate result and the cross-scaffold caveat, so an
 agent relaying a number also relays its limits.
