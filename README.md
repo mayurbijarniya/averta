@@ -152,9 +152,9 @@ resampling repositories:
 | majority | 0.500 | [0.500, 0.500] | 0.127 | 0.000 | n/a | n/a |
 | turn index only | 0.500 | [0.500, 0.500] | 0.127 | 0.000 | n/a | n/a |
 | **logistic** | **0.677** | [0.651, 0.697] | 0.198 | 0.191 | **0.18 ms** | **2.1 KB** |
-| random forest | 0.655 | [0.626, 0.673] | 0.190 | 0.166 | 26.6 ms | 11.3 MB |
-| hist gradient boosting | 0.629 | [0.591, 0.651] | 0.168 | 0.172 | 11.6 ms | 524 KB |
-| xgboost | 0.650 | [0.605, 0.673] | 0.187 | 0.154 | 0.18 ms | 490 KB |
+| random forest | 0.653 | [0.626, 0.669] | 0.186 | 0.161 | 26.8 ms | 10.9 MB |
+| hist gradient boosting | 0.626 | [0.593, 0.646] | 0.168 | 0.162 | 10.7 ms | 524 KB |
+| xgboost | 0.649 | [0.605, 0.672] | 0.187 | 0.154 | 0.18 ms | 489 KB |
 
 Four of the five pre-registered criteria passed. Recall at a 5% false-positive
 budget reached 0.191 against a required 0.25, and that shortfall holds at every
@@ -167,7 +167,7 @@ interval of [0.651, 0.697] separates decisively from three baselines pinned at
 0.500–0.521.
 
 **A 2.1 KB linear model was the most accurate**, beating gradient boosting
-(0.677 against 0.629–0.655) at 0.18 ms single-row CPU inference. Plausible
+(0.677 against 0.626–0.653) at 0.18 ms single-row CPU inference. Plausible
 cause: with 33 features, 491 positives and repository-grouped evaluation, trees
 fit repository-specific thresholds that do not survive the group boundary. For
 scale, the neural monitor this work reproduces uses 0.6B parameters.
@@ -191,11 +191,11 @@ sequence-structure features, and the importance ranking confirmed the mechanism:
 
 | feature | attempt 1 | attempt 2 |
 |---|---|---|
-| `distinct_action_ratio` | absent | **0.159** |
-| `novelty_rate_recent` | absent | **0.153** |
-| `n_errors` | 0.023 | 0.084 |
-| `action_bigram_repeat_max` | absent | 0.078 |
-| `n_repeated_calls` | **0.198** | 0.030 |
+| `distinct_action_ratio` | absent | **0.178** |
+| `novelty_rate_recent` | absent | **0.171** |
+| `action_bigram_repeat_max` | absent | 0.080 |
+| `n_errors` | 0.023 | 0.051 |
+| `n_repeated_calls` | **0.198** | 0.035 |
 
 `n_repeated_calls` collapsed once ordering was represented properly; it had been
 a proxy for structure it could not express. The two strongest features now both
@@ -211,10 +211,10 @@ spent *after* the cut, and sessions wrongly terminated are never netted off.
 
 | threshold | recall | FPR | est. tokens saved | of total | successes killed |
 |---|---|---|---|---|---|
-| 0.55 | 0.501 | 0.246 | 25,207,866 | 33.6% | 121 |
-| 0.65 | 0.283 | 0.096 | 11,932,608 | 15.9% | 47 |
+| 0.55 | 0.502 | 0.246 | 25,236,965 | 33.6% | 121 |
+| 0.65 | 0.283 | 0.096 | 11,881,015 | 15.8% | 47 |
 | **0.80** | **0.183** | **0.047** | **6,276,339** | **8.4%** | **23** |
-| 0.90 | 0.051 | 0.010 | 1,822,964 | 2.4% | 5 |
+| 0.90 | 0.050 | 0.010 | 1,803,966 | 2.4% | 5 |
 
 At a comparable false-positive budget, 4.7% against the paper's 5% target, this
 reaches **8.4% estimated token savings** where the 0.6B neural monitor reports

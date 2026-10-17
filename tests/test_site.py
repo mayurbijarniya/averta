@@ -135,6 +135,23 @@ def full_artifacts(artifacts):
     return artifacts
 
 
+class TestAttemptTable:
+    def test_attempt_two_reads_the_artifact(self, full_artifacts, tmp_path):
+        text = build(full_artifacts, tmp_path / "index.html").read_text()
+        assert "<strong>0.159</strong>" in text
+        assert "<strong>0.153</strong>" in text
+
+    def test_attempt_one_is_kept_as_recorded(self, full_artifacts, tmp_path):
+        text = build(full_artifacts, tmp_path / "index.html").read_text()
+        assert "<strong>0.198</strong>" in text
+
+    def test_missing_diagnostics_leaves_attempt_two_blank(self, artifacts, tmp_path):
+        text = build(artifacts, tmp_path / "index.html").read_text()
+        assert "<td><code>distinct_action_ratio</code></td><td>-</td><td>-</td>" in text
+        row = "<td><code>n_repeated_calls</code></td><td><strong>0.198</strong></td><td>-</td>"
+        assert row in text
+
+
 class TestBuild:
     def test_writes_a_page(self, artifacts, tmp_path):
         out = build(artifacts, tmp_path / "index.html")

@@ -49,6 +49,39 @@ def _quoted(text: str, pattern: str) -> set[str]:
     return set(re.findall(pattern, text))
 
 
+def _table_rows(text: str) -> list[list[str]]:
+    """Every Markdown table row as its cells, bold and code markers stripped."""
+    rows = []
+    for line in text.splitlines():
+        if not line.startswith("|") or set(line) <= set("|-: "):
+            continue
+        rows.append([cell.strip().strip("*`") for cell in line.strip("|").split("|")])
+    return rows
+
+
+MODEL_LABELS = {
+    "majority": "majority",
+    "turn index only": "turn_index_only",
+    "logistic": "logistic",
+    "random forest": "random_forest",
+    "hist gradient boosting": "hist_gradient_boosting",
+    "xgboost": "xgboost",
+}
+
+
+def _size(n_bytes: int) -> str:
+    kb = n_bytes / 1024
+    if kb < 10:
+        return f"{kb:.1f} KB"
+    if kb < 1024:
+        return f"{kb:.0f} KB"
+    return f"{kb / 1024:.1f} MB"
+
+
+def _latency(ms: float) -> str:
+    return f"{ms:.2f} ms" if ms < 1 else f"{ms:.1f} ms"
+
+
 class TestHeadlineFigures:
     def test_brier_scores_match_the_artifact(self, diagnostics, prose):
         cal = diagnostics["calibration"]
@@ -120,6 +153,47 @@ class TestHeadlineFigures:
         quoted = _quoted(prose, r"local \(n=(\d+)\)")
         assert quoted == {str(drift["n_local"])}, f"local sample sizes quoted: {quoted}"
         assert f"corpus (n={drift['n_corpus']:,})" in prose
+
+    def test_model_table_matches_the_gate(self, gate, diagnostics, prose):
+        results = {r["name"]: r for r in gate["results"]}
+        cost = {c["model"]: c for c in diagnostics["cost"]}
+        rows = [r for r in _table_rows(prose) if r[0] in MODEL_LABELS and len(r) >= 7]
+        assert {r[0] for r in rows} >= {"logistic", "random forest", "xgboost"}, rows
+        for label, auroc, ci, auprc, recall, latency, size, *_ in rows:
+            name = MODEL_LABELS[label]
+            result = results[name]
+            assert auroc == f"{result['auroc']:.3f}", name
+            assert ci == f"[{result['auroc_ci_lower']:.3f}, {result['auroc_ci_upper']:.3f}]", name
+            assert auprc == f"{result['auprc_minority']:.3f}", name
+            assert recall == f"{result['recall_at_fpr']:.3f}", name
+            if name in cost:
+                assert latency == _latency(cost[name]["predict_single_ms_p50"]), name
+                assert size == _size(cost[name]["parameters_bytes"]), name
+
+    def test_importance_tables_match_the_diagnostics(self, diagnostics, prose):
+        # The attempt-2 column, and the model card's single column, are the
+        # current model. Attempt 1 is a superseded run and is not checked.
+        drops = {i["feature"]: i["drop"] for i in diagnostics["importance"]}
+        checked = 0
+        for row in _table_rows(prose):
+            # Drift rows also start with a feature name but carry more columns.
+            if row[0] in drops and len(row) in (2, 3) and re.fullmatch(r"\d\.\d{3}", row[-1]):
+                assert row[-1] == f"{drops[row[0]]:.3f}", row[0]
+                checked += 1
+        assert checked >= 10, f"expected both importance tables, checked {checked} rows"
+
+    def test_savings_table_matches_the_simulation(self, prose):
+        savings = _load("phase4/savings_cut10.json")
+        points = {f"{p['threshold']:.2f}": p for p in savings["points"]}
+        rows = [r for r in _table_rows(prose) if r[0] in points and len(r) == 6]
+        assert rows, "no savings table found in the documents"
+        for threshold, recall, fpr, tokens, share, killed in rows:
+            point = points[threshold]
+            assert recall == f"{point['recall']:.3f}", threshold
+            assert fpr == f"{point['false_positive_rate']:.3f}", threshold
+            assert tokens == f"{point['estimated_tokens_saved']:,}", threshold
+            assert share == f"{point['savings_rate'] * 100:.1f}%", threshold
+            assert killed == str(point["successes_terminated"]), threshold
 
     def test_corpus_size_matches_phase_one(self, prose):
         summary = _load("phase1/corpus_summary.json")

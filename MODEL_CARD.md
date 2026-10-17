@@ -119,11 +119,11 @@ Permutation importance under the same grouped folds:
 
 | feature | AUROC drop |
 |---|---|
-| `distinct_action_ratio` | 0.159 |
-| `novelty_rate_recent` | 0.153 |
-| `n_errors` | 0.084 |
-| `action_bigram_repeat_max` | 0.078 |
-| `n_repeated_calls` | 0.030 |
+| `distinct_action_ratio` | 0.178 |
+| `novelty_rate_recent` | 0.171 |
+| `action_bigram_repeat_max` | 0.080 |
+| `n_errors` | 0.051 |
+| `n_repeated_calls` | 0.035 |
 
 The prior expectation, that recurring error signatures would dominate, was
 wrong. Failure is predicted by **declining action novelty**: a session heading

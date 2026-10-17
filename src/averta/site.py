@@ -642,6 +642,36 @@ def _savings_charts(savings: dict[str, Any]) -> str:
     )
 
 
+# Attempt 1 describes a run that no longer exists, so its importances stay
+# literal. `None` marks a feature that attempt 1 did not have.
+ATTEMPT_ONE_IMPORTANCE: dict[str, float | None] = {
+    "distinct_action_ratio": None,
+    "novelty_rate_recent": None,
+    "action_bigram_repeat_max": None,
+    "n_errors": 0.023,
+    "n_repeated_calls": 0.198,
+}
+
+
+def _attempt_rows(diag: dict[str, Any] | None) -> list[list[str]]:
+    """Attempt 1 from the record above, attempt 2 from the current artifact."""
+    current = {i["feature"]: i["drop"] for i in (diag or {}).get("importance", [])}
+    order = sorted(ATTEMPT_ONE_IMPORTANCE, key=lambda f: -current.get(f, 0.0))
+    top_now = order[:2]
+
+    rows = []
+    for feature in order:
+        before = ATTEMPT_ONE_IMPORTANCE[feature]
+        first = "-" if before is None else f"{before:.3f}"
+        if before is not None and before == max(v or 0 for v in ATTEMPT_ONE_IMPORTANCE.values()):
+            first = f"<strong>{first}</strong>"
+        second = f"{current[feature]:.3f}" if feature in current else "-"
+        if feature in top_now and feature in current:
+            second = f"<strong>{second}</strong>"
+        rows.append([f"<code>{feature}</code>", first, second])
+    return rows
+
+
 def _figures(
     gate: dict[str, Any],
     diag: dict[str, Any] | None,
@@ -950,14 +980,8 @@ def build(artifacts: Path, out: Path) -> Path:
             "exactly the failing criterion, but not enough to clear it.</p>",
             _table(
                 ["feature", "attempt 1", "attempt 2"],
-                [
-                    ["<code>distinct_action_ratio</code>", "-", "<strong>0.159</strong>"],
-                    ["<code>novelty_rate_recent</code>", "-", "<strong>0.153</strong>"],
-                    ["<code>n_errors</code>", "0.023", "0.084"],
-                    ["<code>action_bigram_repeat_max</code>", "-", "0.078"],
-                    ["<code>n_repeated_calls</code>", "<strong>0.198</strong>", "0.030"],
-                ],
-                [""] * 5,
+                _attempt_rows(diag),
+                [""] * len(ATTEMPT_ONE_IMPORTANCE),
                 "AUROC drop when the feature is shuffled, under the same grouped folds.",
             ),
             "<p><code>n_repeated_calls</code> collapsed once ordering was represented "
